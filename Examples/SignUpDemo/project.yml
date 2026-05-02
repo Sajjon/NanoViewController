@@ -1,0 +1,76 @@
+# XcodeGen spec for the SignUpDemo example app.
+#
+# `xcodegen generate` (or `just example-gen` from the repo root) reads this
+# file and produces SignUpDemo.xcodeproj. The generated project is gitignored
+# — this YAML is the source of truth.
+#
+# Run via:    just example-gen && just example-run
+# Or open:    open Examples/SignUpDemo/SignUpDemo.xcodeproj
+
+name: SignUpDemo
+
+options:
+  bundleIdPrefix: com.sajjon.nanoviewcontroller.examples
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+  defaultConfig: Debug
+  deploymentTarget:
+    iOS: "17.0"
+  groupSortPosition: top
+
+configs:
+  Debug: debug
+  Release: release
+
+# Pull NanoViewController in via a relative path — this keeps the example
+# locked to the sources sitting next to it in this repo.
+packages:
+  NanoViewController:
+    path: ../..
+
+targets:
+  SignUpDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Sources
+    settings:
+      base:
+        # No custom signing — the example is meant for the simulator only.
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGNING_ALLOWED: "NO"
+        PRODUCT_BUNDLE_IDENTIFIER: com.sajjon.nanoviewcontroller.examples.signupdemo
+        GENERATE_INFOPLIST_FILE: "YES"
+        INFOPLIST_KEY_UILaunchStoryboardName: ""
+        # `LaunchScreen` storyboard isn't shipped — leaving the key blank
+        # gives a black launch screen, which is fine for a demo.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_UIRequiresFullScreen: "YES"
+        TARGETED_DEVICE_FAMILY: "1"   # iPhone only
+        SWIFT_VERSION: "5.9"
+    dependencies:
+      - package: NanoViewController
+        product: NanoViewControllerCore
+      - package: NanoViewController
+        product: NanoViewControllerCombine
+      - package: NanoViewController
+        product: NanoViewControllerNavigation
+      - package: NanoViewController
+        product: NanoViewControllerController
+      - package: NanoViewController
+        product: NanoViewControllerSceneViews
+      - package: NanoViewController
+        product: NanoViewControllerDIPrimitives
+
+schemes:
+  SignUpDemo:
+    build:
+      targets:
+        SignUpDemo: all
+    run:
+      config: Debug
+    archive:
+      config: Release

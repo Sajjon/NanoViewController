@@ -41,5 +41,8 @@ playground.xcworkspace
 # Per-machine SPM IDE state — Xcode regenerates this on first open.
 .swiftpm/
 
+# Example apps' Xcode projects are generated from their project.yml via XcodeGen.
+Examples/*/*.xcodeproj/
+
 # macOS
 .DS_Store

@@ -30,6 +30,7 @@ default:
 bootstrap:
     brew bundle install
     pre-commit install --hook-type pre-commit --hook-type pre-push
+    just example-gen
 
 # ── Testing ───────────────────────────────────────────────────────────────────
 
@@ -52,6 +53,23 @@ cov: _run-cov
 # Like cov, but also writes Cobertura XML for upload to Codecov.
 cov-cobertura: _run-cov
     xcresultparser --output-format cobertura {{result}} > {{result_dir}}/coverage.xml
+
+# ── Examples ─────────────────────────────────────────────────────────────────
+
+# (Re)generate the SignUpDemo Xcode project from its project.yml.
+# Run after pulling new commits / editing project.yml — the .xcodeproj
+# under Examples/SignUpDemo/ is gitignored.
+example-gen:
+    cd Examples/SignUpDemo && xcodegen generate
+
+# Build the SignUpDemo example for the simulator.
+example-build:
+    xcodebuild build \
+        -project Examples/SignUpDemo/SignUpDemo.xcodeproj \
+        -scheme SignUpDemo \
+        -destination '{{sim}}' \
+        ENABLE_USER_SCRIPT_SANDBOXING=NO \
+        | xcpretty
 
 # ── Formatting ────────────────────────────────────────────────────────────────
 

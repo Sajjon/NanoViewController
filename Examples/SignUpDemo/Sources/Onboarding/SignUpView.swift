@@ -1,0 +1,112 @@
+// MIT License — Copyright (c) 2018-2026 Open Zesame
+
+import Combine
+import NanoViewControllerCombine
+import NanoViewControllerController
+import NanoViewControllerCore
+import UIKit
+
+/// Plain UIKit form: a header label, two text fields (name + email), and a
+/// "Sign Up" button. The button's `isEnabled` is driven by the ViewModel via
+/// `populate(with:)`.
+public final class SignUpView: UIView {
+    private lazy var headerLabel: UILabel = {
+        let label = UILabel()
+        label.text = "Create your account"
+        label.font = .preferredFont(forTextStyle: .largeTitle)
+        label.adjustsFontForContentSizeCategory = true
+        label.numberOfLines = 0
+        return label
+    }()
+
+    private lazy var nameField = makeField(placeholder: "Name", contentType: .name)
+    private lazy var emailField: UITextField = {
+        let field = makeField(placeholder: "Email", contentType: .emailAddress)
+        field.keyboardType = .emailAddress
+        field.autocapitalizationType = .none
+        return field
+    }()
+
+    private lazy var submitButton: UIButton = {
+        var config = UIButton.Configuration.filled()
+        config.title = "Sign Up"
+        config.baseBackgroundColor = .systemBlue
+        config.cornerStyle = .large
+        let button = UIButton(configuration: config)
+        // Disabled until both fields are non-empty (driven by the ViewModel).
+        button.isEnabled = false
+        return button
+    }()
+
+    private lazy var stack: UIStackView = {
+        let stack = UIStackView(arrangedSubviews: [headerLabel, nameField, emailField, submitButton])
+        stack.axis = .vertical
+        stack.spacing = 16
+        stack.alignment = .fill
+        stack.distribution = .fill
+        return stack
+    }()
+
+    public init() {
+        super.init(frame: .zero)
+        setup()
+    }
+
+    @available(*, unavailable)
+    public required init?(coder _: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func setup() {
+        backgroundColor = .systemBackground
+        addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor, constant: 24),
+            stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -24),
+            stack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 48),
+        ])
+    }
+
+    private func makeField(placeholder: String, contentType: UITextContentType) -> UITextField {
+        let field = UITextField()
+        field.placeholder = placeholder
+        field.borderStyle = .roundedRect
+        field.font = .preferredFont(forTextStyle: .body)
+        field.adjustsFontForContentSizeCategory = true
+        field.textContentType = contentType
+        field.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        return field
+    }
+}
+
+extension SignUpView: ViewModelled {
+    public typealias ViewModel = SignUpViewModel
+
+    /// Streams the field text + the button-tap into the ViewModel.
+    public var inputFromView: InputFromView {
+        InputFromView(
+            name: nameField.textPublisher,
+            email: emailField.textPublisher,
+            submitTrigger: submitButton.tapPublisher
+        )
+    }
+
+    public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
+        [output.isSubmitEnabled --> submitButton.isEnabledBinder]
+    }
+}
+
+// MARK: - UITextField text publisher
+
+private extension UITextField {
+    /// Emits the current text on every `.editingChanged` notification.
+    /// Seeds with the initial value so downstream `combineLatest` doesn't
+    /// stall waiting for the first edit.
+    var textPublisher: AnyPublisher<String, Never> {
+        publisher(for: .editingChanged)
+            .map { [weak self] _ in self?.text ?? "" }
+            .prepend(text ?? "")
+            .eraseToAnyPublisher()
+    }
+}

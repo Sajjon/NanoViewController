@@ -38,4 +38,16 @@ just            # list every recipe
 
 CI runs the same pipeline on every push / PR — typos check, swiftformat lint, swiftlint strict, build + test on the iOS Simulator. See `.github/workflows/ci.yml`.
 
-The `pre-commit` hook installed by `just bootstrap` enforces: typos, shellcheck, swiftformat lint, swiftlint strict on every commit; and the full test suite on every push. 
+The `pre-commit` hook installed by `just bootstrap` enforces: typos, shellcheck, swiftformat lint, swiftlint strict on every commit; and the full test suite on every push.
+
+# Example: SignUpDemo
+
+`Examples/SignUpDemo/` is a small UIKit iOS app that walks through every load-bearing piece of the package: a `SceneController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
+
+```sh
+just example-gen     # generate Examples/SignUpDemo/SignUpDemo.xcodeproj from project.yml
+just example-build   # xcodebuild for iPhone 17 simulator
+open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
+```
+
+The example also serves as the canonical "minimum BaseViewModel" reference — `Examples/SignUpDemo/Sources/Shared/BaseViewModel.swift` is a 12-line subclass of `AbstractViewModel` adding a `Navigator<Step>`, which is what most consumers will end up writing. 

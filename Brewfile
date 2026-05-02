@@ -9,6 +9,7 @@
 # Build / test
 brew "just"          # task runner; recipes live in /justfile
 brew "xcpretty"      # nicer xcodebuild output
+brew "xcodegen"      # generates Examples/SignUpDemo/SignUpDemo.xcodeproj from project.yml
 
 # Lint / format / typo-check (matched to the CI versions where it matters)
 brew "swiftformat"
