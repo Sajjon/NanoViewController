@@ -11,7 +11,7 @@ import UIKit
 /// is the standard conformer; consumers can declare conformance on their own
 /// table-view subclasses to participate in the same publisher.
 ///
-/// Views that want ``UIKit/UITableView/itemSelectedPublisher`` must conform
+/// Views that want the `UITableView.itemSelectedPublisher` helper (defined below) must conform
 /// to this — that property forwards to the subclass-supplied publisher.
 public protocol SelectionPublishing: AnyObject {
     /// Emits each `IndexPath` selected by the user.

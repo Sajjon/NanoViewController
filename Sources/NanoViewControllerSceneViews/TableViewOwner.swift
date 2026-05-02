@@ -6,8 +6,9 @@ import Foundation
 /// ``SingleCellTypeTableView``.
 ///
 /// Used by ``BaseTableViewOwner`` to surface the strongly-typed table view
-/// to the scene's `populate(with:)` bindings, and by infrastructure (e.g.
-/// pull-to-refresh) to reach the underlying scroll view.
+/// to the scene's `populate(with:)` bindings. (Pull-to-refresh wires through
+/// ``ScrollViewOwner``, not this protocol — `TableViewOwner` only carries
+/// the `Header`/`Cell` generic pair.)
 ///
 /// Conformance is automatic via the ``TableViewSceneView`` typealias —
 /// `BaseTableViewOwner<Header, Cell> & TableViewOwner` makes any subclass of

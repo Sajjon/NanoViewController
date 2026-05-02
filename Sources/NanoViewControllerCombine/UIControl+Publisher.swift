@@ -17,8 +17,8 @@ private final class WeakBox<Object: AnyObject> {
 /// Publisher that emits a `Void` event each time its underlying `Control`
 /// fires the bitmask of `UIControl.Event`s it was created with.
 ///
-/// Callers don't usually instantiate this directly — use
-/// ``UIKit/UIControl/publisher(for:)`` (defined below) or one of the
+/// Callers don't usually instantiate this directly — use the
+/// `UIControl.publisher(for:)` helper (defined below) or one of the
 /// pre-built publishers in `UIControl+Publishers.swift`.
 ///
 /// ## Example

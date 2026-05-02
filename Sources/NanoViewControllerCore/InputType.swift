@@ -60,13 +60,30 @@ import Foundation
 /// let passwordSubject = CurrentValueSubject<String, Never>("")
 /// let tapSubject      = PassthroughSubject<Void, Never>()
 ///
+/// // Build an empty InputFromController inline — no test-helper needed.
+/// let titleSubject  = PassthroughSubject<String, Never>()
+/// let leftSubject   = PassthroughSubject<BarButtonContent, Never>()
+/// let rightSubject  = PassthroughSubject<BarButtonContent, Never>()
+/// let toastSubject  = PassthroughSubject<Toast, Never>()
+/// let fromController = InputFromController(
+///     viewDidLoad:                    Empty().eraseToAnyPublisher(),
+///     viewWillAppear:                 Empty().eraseToAnyPublisher(),
+///     viewDidAppear:                  Empty().eraseToAnyPublisher(),
+///     leftBarButtonTrigger:           Empty().eraseToAnyPublisher(),
+///     rightBarButtonTrigger:          Empty().eraseToAnyPublisher(),
+///     titleSubject:                   titleSubject,
+///     leftBarButtonContentSubject:    leftSubject,
+///     rightBarButtonContentSubject:   rightSubject,
+///     toastSubject:                   toastSubject
+/// )
+///
 /// let input = SignUpViewModel.Input(
 ///     fromView: SignUpInputFromView(
 ///         username:     usernameSubject.eraseToAnyPublisher(),
 ///         password:     passwordSubject.eraseToAnyPublisher(),
 ///         signUpTapped: tapSubject.eraseToAnyPublisher()
 ///     ),
-///     fromController: .test()      // a tiny test-helper that builds an empty InputFromController
+///     fromController: fromController
 /// )
 ///
 /// let output = SignUpViewModel(service: stubService).transform(input: input)
@@ -75,7 +92,6 @@ import Foundation
 /// usernameSubject.send("alex")
 /// passwordSubject.send("hunter22")
 /// tapSubject.send(())
-/// XCTAssertEqual(try wait(for: output.isLoading), [false, true, false])
 /// ```
 public protocol InputType {
     /// The view-driven publishers — taps, text, toggle state, etc. Defined as a

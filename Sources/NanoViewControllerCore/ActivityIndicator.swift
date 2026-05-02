@@ -5,7 +5,7 @@ import Foundation
 
 /// Thread-safe in-flight tracker for asynchronous work.
 ///
-/// Wrap any publisher with ``Combine/Publisher/trackActivity(_:)`` and the
+/// Wrap any publisher with the `.trackActivity(_:)` helper (defined below) and the
 /// indicator will flip to `true` while the wrapped publisher is subscribed
 /// and back to `false` when it emits its first output, completes, or is
 /// cancelled. Bind ``asPublisher()`` to a button's "is loading" binder, a
@@ -94,7 +94,7 @@ private extension ActivityIndicator {
     }
 
     /// Wraps `source` with start/stop side-effects around its lifecycle.
-    /// Called indirectly via ``Combine/Publisher/trackActivity(_:)``.
+    /// Called indirectly via the `.trackActivity(_:)` extension below.
     func track<P: Publisher>(_ source: P) -> some Publisher<P.Output, P.Failure> {
         source
             .handleEvents(

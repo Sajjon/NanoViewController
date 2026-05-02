@@ -37,8 +37,9 @@ import UIKit
 ///     }
 /// }
 ///
+/// let haptics = RecordingHaptics()
 /// let vm = ReceiveAddressViewModel(pasteboard: MockPasteboard(),
-///                                  haptics:    RecordingHaptics())
+///                                  haptics:    haptics)
 /// vm.copyAddress("0xabc…")
 /// XCTAssertEqual(haptics.calls, [.success])
 /// ```

@@ -8,7 +8,7 @@ import Foundation
 ///
 /// `ErrorTracker` is the dual of ``ActivityIndicator`` for the error path:
 ///
-///   * Wrap a publisher with ``Combine/Publisher/trackError(_:)`` to forward
+///   * Wrap a publisher with the `.trackError(_:)` helper (defined below) to forward
 ///     any failure into the tracker without altering the upstream's
 ///     `Output`/`Failure` types.
 ///   * Subscribe to ``asPublisher()`` for a `Never`-failing stream of every

@@ -86,7 +86,7 @@ public extension UINavigationBar {
 
 /// Per-screen navigation-bar styling.
 ///
-/// Applied in ``UIKit/UINavigationBar/applyLayout(_:)`` and produced via
+/// Applied in the `UINavigationBar.applyLayout(_:)` extension above and produced via
 /// consumer factories — the package ships no brand-default values, leaving
 /// it to consumers (Zhip, the SignUpDemo example) to declare static factories
 /// like `.opaque` / `.translucent(...)` / `.hidden` on top.
