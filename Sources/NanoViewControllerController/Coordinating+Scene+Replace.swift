@@ -6,12 +6,47 @@ import NanoViewControllerNavigation
 import UIKit
 
 public extension Coordinating {
-    /// Closure shape used by `modallyPresent(...)` and `replaceAllScenes(...)`:
-    /// receives the next navigation step plus a `DismissScene` callback the
-    /// handler can invoke to dismiss the presenting scene with optional animation.
+    /// Closure shape used by ``modallyPresent(scene:viewModel:animated:presentationCompletion:navigationHandler:)``
+    /// and ``replaceAllScenes(with:viewModel:animated:whenReplacingFinished:navigationHandler:)``:
+    /// receives the next navigation step plus a ``DismissScene`` callback the
+    /// handler can invoke to dismiss the presenting scene with optional
+    /// animation.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// modallyPresent(scene: SettingsScene.self, viewModel: vm) { step, dismiss in
+    ///     switch step {
+    ///     case .userTappedDone:    dismiss(true, nil)
+    ///     case .userTappedAccount: /* push another VC inside the modal */ break
+    ///     }
+    /// }
+    /// ```
     typealias NavigationHandlerModalScene<N: Navigating> = (N.NavigationStep, @escaping DismissScene) -> Void
 
     /// Replaces every scene in the current navigation stack with `scene`.
+    ///
+    /// Use when transitioning to a *fresh* root for the same nav controller
+    /// (e.g. logout → login). The previous stack is dismissed in
+    /// `whenReplacingFinished` so any in-flight modal teardowns don't race
+    /// with the new root push.
+    ///
+    /// ## Example — logout flow
+    ///
+    /// ```swift
+    /// final class AppCoordinator: BaseCoordinator<Never> {
+    ///     func logout() {
+    ///         let vm = LoginViewModel(api: api)
+    ///         replaceAllScenes(with: LoginScene.self, viewModel: vm) { step, dismiss in
+    ///             switch step {
+    ///             case let .loggedIn(user):
+    ///                 // Replace AGAIN to swap to the home scene.
+    ///                 self.showHome(for: user)
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    /// ```
     func replaceAllScenes<S: Scene<V>, V: ContentView>(
         with _: S.Type,
         viewModel: V.ViewModel,
@@ -30,7 +65,10 @@ public extension Coordinating {
         )
     }
 
-    /// Instance-level variant of `replaceAllScenes(with:viewModel:...)`.
+    /// Instance-level variant of
+    /// ``replaceAllScenes(with:viewModel:animated:whenReplacingFinished:navigationHandler:)``.
+    ///
+    /// Use when you already have a scene instance.
     func replaceAllScenes<V: ContentView>(
         with scene: some Scene<V>,
         animated: Bool = true,
@@ -62,9 +100,25 @@ public extension Coordinating {
 
 public extension UINavigationController {
     /// Smart push: pushes `viewController` if there is already at least one
-    /// VC on the stack; otherwise sets it as the single root. Pass
-    /// `forceReplaceAllVCsInsteadOfPush: true` to clear the stack
+    /// VC on the stack; otherwise sets it as the single root.
+    ///
+    /// Pass `forceReplaceAllVCsInsteadOfPush: true` to clear the stack
     /// regardless. Calls `completion` after the transition (animated or not).
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// // First scene of a flow — sets root if empty, pushes otherwise.
+    /// navigationController.setRootViewControllerIfEmptyElsePush(
+    ///     viewController: SignUpScene(viewModel: vm)
+    /// )
+    ///
+    /// // Replacement — wipes the stack regardless.
+    /// navigationController.setRootViewControllerIfEmptyElsePush(
+    ///     viewController: HomeScene(viewModel: vm),
+    ///     forceReplaceAllVCsInsteadOfPush: true
+    /// )
+    /// ```
     func setRootViewControllerIfEmptyElsePush(
         viewController: UIViewController,
         animated: Bool = true,
@@ -77,7 +131,8 @@ public extension UINavigationController {
             pushViewController(viewController, animated: animated)
         }
 
-        // Add extra functionality to pass a "completion" closure even for `push`ed ViewControllers.
+        // Add extra functionality to pass a "completion" closure even for
+        // `push`ed ViewControllers (UIKit doesn't ship a push-with-completion API).
         guard let completion else { return }
         // If there is no transition coordinator (i.e. we set VCs without an
         // animation context), schedule the completion for the next runloop
@@ -92,8 +147,17 @@ public extension UINavigationController {
 
 public extension UINavigationController {
     /// `popToRootViewController(animated:)` with a completion callback that
-    /// fires after the pop animation finishes (or on the next runloop tick if
-    /// no transition coordinator is available).
+    /// fires after the pop animation finishes (or on the next runloop tick
+    /// if no transition coordinator is available).
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// navigationController.popToRootViewController(animated: true) {
+    ///     // Now the home scene is the only one on the stack.
+    ///     self.refreshHome()
+    /// }
+    /// ```
     func popToRootViewController(animated: Bool = true, completion: @escaping Completion) {
         popToRootViewController(animated: animated)
         guard animated, let coordinator = transitionCoordinator else {
