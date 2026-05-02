@@ -1,7 +1,9 @@
 // MIT License — Copyright (c) 2018-2026 Open Zesame
 
 import Combine
+import Foundation
 import NanoViewControllerCombine
+import NanoViewControllerController
 
 /// User outcomes the SignUp scene can emit. The coordinator subscribes and
 /// decides what happens next (here: `signedUp(_:)` advances to Home).

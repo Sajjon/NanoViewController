@@ -83,30 +83,18 @@ public final class SignUpView: UIView {
 extension SignUpView: ViewModelled {
     public typealias ViewModel = SignUpViewModel
 
-    /// Streams the field text + the button-tap into the ViewModel.
+    /// Streams the field text + the button-tap into the ViewModel. Uses the
+    /// package's `UITextField.textPublisher` (`String?`) lifted to a non-optional
+    /// `String` via the `orEmpty` helper from `NanoViewControllerCombine`.
     public var inputFromView: InputFromView {
         InputFromView(
-            name: nameField.textPublisher,
-            email: emailField.textPublisher,
+            name: nameField.textPublisher.orEmpty,
+            email: emailField.textPublisher.orEmpty,
             submitTrigger: submitButton.tapPublisher
         )
     }
 
     public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
         [output.isSubmitEnabled --> submitButton.isEnabledBinder]
-    }
-}
-
-// MARK: - UITextField text publisher
-
-private extension UITextField {
-    /// Emits the current text on every `.editingChanged` notification.
-    /// Seeds with the initial value so downstream `combineLatest` doesn't
-    /// stall waiting for the first edit.
-    var textPublisher: AnyPublisher<String, Never> {
-        publisher(for: .editingChanged)
-            .map { [weak self] _ in self?.text ?? "" }
-            .prepend(text ?? "")
-            .eraseToAnyPublisher()
     }
 }

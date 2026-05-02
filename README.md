@@ -50,4 +50,4 @@ just example-build   # xcodebuild for iPhone 17 simulator
 open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
 ```
 
-The example also serves as the canonical "minimum BaseViewModel" reference — `Examples/SignUpDemo/Sources/Shared/BaseViewModel.swift` is a 12-line subclass of `AbstractViewModel` adding a `Navigator<Step>`, which is what most consumers will end up writing. 
+The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `BaseViewModel<NavigationStep, InputFromView, Output>` (which fixes `FromController` to `InputFromController` and provides a `Navigator<Step>`), coordinator subscribes to that navigator and routes the user-actions to push / pop / present transitions. 
