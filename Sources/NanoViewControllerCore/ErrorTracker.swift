@@ -11,7 +11,11 @@ import Foundation
 /// the tracker without altering the upstream's `Failure` type. Subscribers
 /// of `tracker.asPublisher()` then get a `Never`-failing stream of errors,
 /// suitable for binding to validation labels / toast outputs.
-public final class ErrorTracker {
+///
+/// `@unchecked Sendable` because the only mutable state is the internal
+/// `PassthroughSubject`, which Combine guarantees is thread-safe at the
+/// `send(_:)` call site.
+public final class ErrorTracker: @unchecked Sendable {
     /// Internal subject that captured errors are pushed into. Exposed to
     /// other modules in the same package via `_subjectCompactMap` so the
     /// Validation sibling package can layer typed-error projections on top

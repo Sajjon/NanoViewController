@@ -12,12 +12,20 @@ import UIKit
 /// `NavigationStep`s consumed by the parent coordinator.
 ///
 /// Subclasses must override `start(didStart:)`.
+///
+/// `@MainActor` to match `Coordinating` (which is main-thread-bound because of
+/// `navigationController: UINavigationController`). The `navigator` property is
+/// declared `nonisolated` so it can satisfy the non-isolated `Navigating`
+/// protocol requirement; that's safe because `Navigator` is `Sendable`.
+@MainActor
 open class BaseCoordinator<NavigationStep>: Coordinating, Navigating {
     /// Active sub-flows. Children are appended on `start(coordinator:...)` and
     /// removed in `remove(childCoordinator:)` to keep ARC happy.
     public var childCoordinators = [Coordinating]()
     /// Stepper that emits typed navigation steps for the parent coordinator.
-    public let navigator = Navigator<NavigationStep>()
+    /// `nonisolated` so it satisfies `Navigating`'s non-isolated requirement
+    /// even though the enclosing class is `@MainActor`.
+    public nonisolated let navigator = Navigator<NavigationStep>()
     /// Subscription bag holding our navigation pipelines for the lifetime of the coordinator.
     public var cancellables = Set<AnyCancellable>()
     /// The `UINavigationController` this coordinator pushes/presents on.

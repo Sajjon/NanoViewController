@@ -8,6 +8,10 @@ import UIKit
 /// predefined bar-button library typically declare a refinement (see
 /// `LeftBarButtonMaking` in Zhip) that pre-fills `makeLeftContent` from a
 /// typed enum case.
+///
+/// `@MainActor` because conformers are `UIViewController` subclasses (`@MainActor`
+/// in the iOS 26 SDK) and `setLeftBarButton(for:)` touches `UINavigationItem`.
+@MainActor
 public protocol LeftBarButtonContentMaking {
     /// The content to install as the left bar button on `viewDidLoad`.
     static var makeLeftContent: BarButtonContent { get }

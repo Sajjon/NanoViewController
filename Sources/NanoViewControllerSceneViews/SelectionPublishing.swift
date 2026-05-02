@@ -8,6 +8,10 @@ import UIKit
 /// `UITableView` subclasses without requiring `where Self: UIView` clutter.
 ///
 /// Views that want `UITableView.itemSelectedPublisher` must conform to this.
+///
+/// `@MainActor` because conformers are `UITableView` subclasses (`@MainActor`
+/// in the iOS 26 SDK).
+@MainActor
 public protocol SelectionPublishing: AnyObject {
     /// Emits each `IndexPath` selected by the user.
     var selectionPublisher: AnyPublisher<IndexPath, Never> { get }

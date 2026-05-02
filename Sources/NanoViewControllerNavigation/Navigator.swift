@@ -8,7 +8,13 @@ import Combine
 /// The ViewModel calls `navigator.next(step)` to declare intent; the coordinator
 /// subscribes to `navigator.navigation` to receive those steps and perform the
 /// actual UIKit transitions.
-public final class Navigator<NavigationStep> {
+///
+/// `@unchecked Sendable` so a `BaseCoordinator` (which is `@MainActor` for iOS
+/// 26 readiness) can hold a `nonisolated let navigator = Navigator<Step>()`
+/// and still satisfy the non-isolated `Navigating` protocol requirement. The
+/// underlying `PassthroughSubject` is thread-safe in practice; `NavigationStep`
+/// values flow only through `send(_:)`/`sink { }`, not stored mutably.
+public final class Navigator<NavigationStep>: @unchecked Sendable {
     /// Internal backing subject. Exposed read-only via `navigation`.
     private let navigationSubject = PassthroughSubject<NavigationStep, Never>()
 

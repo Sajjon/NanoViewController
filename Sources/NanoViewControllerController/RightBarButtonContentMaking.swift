@@ -6,6 +6,10 @@ import UIKit
 /// any `BarButtonContent`. Apps with a predefined bar-button library typically
 /// declare a Zhip-side refinement (see `RightBarButtonMaking` in Zhip) that
 /// pre-fills `makeRightContent` from a typed enum case.
+///
+/// `@MainActor` because conformers are `UIViewController` subclasses (`@MainActor`
+/// in the iOS 26 SDK) and `setRightBarButton(for:)` touches `UINavigationItem`.
+@MainActor
 public protocol RightBarButtonContentMaking {
     /// The content to install as the right bar button on `viewDidLoad`.
     static var makeRightContent: BarButtonContent { get }
@@ -23,4 +27,8 @@ public extension RightBarButtonContentMaking {
 /// is hidden AND the swipe-back gesture is disabled. Use on flow-terminating
 /// screens (e.g. "wallet created" confirmation) where backing up would re-enter
 /// an inconsistent state.
+///
+/// `@MainActor` because the only meaningful conformers are `UIViewController`
+/// subclasses (themselves `@MainActor` in the iOS 26 SDK).
+@MainActor
 public protocol BackButtonHiding {}

@@ -5,6 +5,10 @@ import UIKit
 /// Abstracts the system pasteboard so view-models can copy user-visible text
 /// without touching `UIPasteboard.general` directly. Unit tests register a
 /// `MockPasteboard` that records values instead of mutating the real pasteboard.
+///
+/// `@MainActor` because `UIPasteboard.general` is main-thread-bound under
+/// the iOS 26 SDK.
+@MainActor
 public protocol Pasteboard: AnyObject {
     /// Copy `string` to the system pasteboard.
     ///
@@ -27,6 +31,7 @@ public extension Pasteboard {
 }
 
 /// Production implementation that writes through to `UIPasteboard.general`.
+@MainActor
 public final class DefaultPasteboard: Pasteboard {
     public init() {}
 

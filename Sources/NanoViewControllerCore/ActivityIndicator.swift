@@ -9,7 +9,11 @@ import Foundation
 /// `indicator` to `true` when the publisher is subscribed and `false` when it
 /// emits its first output / completes / cancels. Bind `indicator.asPublisher()`
 /// to a UIButton's `isLoadingBinder` to drive spinner UI.
-public final class ActivityIndicator {
+///
+/// `@unchecked Sendable` because all mutable state is guarded by an
+/// `NSRecursiveLock`; instances are intentionally shared across publisher
+/// chains running on different schedulers.
+public final class ActivityIndicator: @unchecked Sendable {
     /// Serializes send writes to `subject` so concurrent trackers can't interleave
     /// start/stop calls and leave the indicator in a wrong state.
     private let lock = NSRecursiveLock()

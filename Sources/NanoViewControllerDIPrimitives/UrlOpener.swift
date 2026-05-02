@@ -5,12 +5,17 @@ import UIKit
 /// Abstracts `UIApplication.shared.open(_:)` so tests can register a no-op
 /// implementation. In the iOS simulator the real call can dispatch a
 /// workspace round-trip that never completes within a unit-test timeout.
+///
+/// `@MainActor` because `UIApplication.shared` is main-thread-bound under
+/// the iOS 26 SDK.
+@MainActor
 public protocol UrlOpener: AnyObject {
     /// Hands `url` off to the system to open in the registered handler app.
     func open(_ url: URL)
 }
 
 /// Production implementation that forwards to `UIApplication.shared.open`.
+@MainActor
 public final class DefaultUrlOpener: UrlOpener {
     /// Trivial init — no dependencies.
     public init() {}

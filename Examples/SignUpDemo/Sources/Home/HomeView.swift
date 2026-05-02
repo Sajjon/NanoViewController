@@ -82,9 +82,7 @@ extension HomeView: ViewModelled {
     }
 
     public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        [
-            output.greeting --> greetingLabel,
-            output.email --> emailLabel,
-        ]
+        output.greeting --> greetingLabel
+        output.email --> emailLabel
     }
 }

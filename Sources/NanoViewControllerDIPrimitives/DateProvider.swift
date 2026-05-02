@@ -8,7 +8,9 @@ import Foundation
 /// Production uses `DefaultDateProvider` (returns `Date()`); tests register
 /// a fixed-clock double, which returns a deterministic instant so relative-time
 /// formatting and "balance last updated" timestamps stay reproducible.
-public protocol DateProvider: AnyObject {
+///
+/// `Sendable` so DI containers can pass instances across actor boundaries.
+public protocol DateProvider: AnyObject, Sendable {
     /// The current instant according to whichever implementation is registered.
     func now() -> Date
 }

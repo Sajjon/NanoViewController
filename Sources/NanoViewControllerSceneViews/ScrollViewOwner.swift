@@ -6,6 +6,10 @@ import UIKit
 /// their composition. Lets generic infrastructure (e.g. pull-to-refresh
 /// installation) reach the underlying scroll view without knowing the
 /// conforming view's full structure.
+///
+/// `@MainActor` because `var scrollView: UIScrollView { get }` is UIKit-bound
+/// and `UIScrollView` becomes `@MainActor` in the iOS 26 SDK.
+@MainActor
 public protocol ScrollViewOwner {
     /// The owned scroll view — typically the one that hosts the scene's content.
     var scrollView: UIScrollView { get }

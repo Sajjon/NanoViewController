@@ -6,6 +6,10 @@ import UIKit
 /// composed `UIStackView`). Used by container views like
 /// `BaseScrollableStackViewOwner` to ask the conforming subclass: "what goes
 /// inside?" — i.e. to obtain the seat that goes inside the scroll view.
+///
+/// `@MainActor` because `makeContentView()` returns a `UIView` and conformers
+/// are `UIView` subclasses (`@MainActor` in the iOS 26 SDK).
+@MainActor
 public protocol ContentViewProvider {
     /// Construct and return the content view to seat inside the container.
     /// Called once during composition; the returned view is owned by the caller.

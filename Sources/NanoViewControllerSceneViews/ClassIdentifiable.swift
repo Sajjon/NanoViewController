@@ -17,6 +17,13 @@ public protocol ClassIdentifiable: NSObjectProtocol {
 /// They are unrelated — `Swift.Identifiable` requires an `id` of any
 /// `Hashable` type for SwiftUI/diffing, whereas this requires a `String`
 /// for UIKit cell registration.
+///
+/// `@MainActor` so the auto-conformance `extension UITableViewCell:
+/// ReuseIdentifiable {}` matches `UITableViewCell`'s `@MainActor` isolation
+/// in the iOS 26 SDK. `ClassIdentifiable` (parent in the default impl) stays
+/// non-isolated because `NSStringFromClass` is thread-safe and `NSObject`
+/// itself isn't `@MainActor`.
+@MainActor
 public protocol ReuseIdentifiable {
     /// Stable string identifier used as the UIKit cell-reuse identifier.
     static var identifier: String { get }

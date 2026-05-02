@@ -10,6 +10,11 @@ import Foundation
 /// Used by `AbstractController` to bridge UIKit's classic target/action API
 /// to the project's reactive view-model inputs without scattering `@objc`
 /// methods across every controller.
+///
+/// `@MainActor` because UIKit dispatches target/action selectors on the main
+/// thread; the shim is meaningless off-main, and the annotation lets it
+/// satisfy iOS 26's `@MainActor` UIKit conformances without bridging.
+@MainActor
 public class AbstractTarget {
     /// Subject the `pressed()` selector pushes into. `unowned` because the
     /// owning controller (which also holds the subject) outlives this target,

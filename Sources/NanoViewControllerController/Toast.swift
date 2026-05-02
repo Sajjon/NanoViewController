@@ -10,7 +10,11 @@ import UIKit
 /// ViewModels `send(Toast(...))` into `InputFromController.toastSubject` to
 /// request a display; the `SceneController` presents it on the active view
 /// controller.
-public struct Toast {
+///
+/// `@unchecked Sendable` because of the optional `Completion` closure — the
+/// type system can't prove the closure is `@Sendable`, but in practice the
+/// callback fires on the main thread inside `present(using:clock:...)`.
+public struct Toast: @unchecked Sendable {
     /// Describes how the toast should disappear after presentation.
     public enum Dismissing {
         /// Dismiss automatically after `duration` seconds.
@@ -53,6 +57,11 @@ public extension Toast {
     /// clock in tests, the production `MainQueueClock` in production. The
     /// package itself does not own a DI container, so the `clock` parameter
     /// is the only acceptable way to inject delayed dispatch here.
+    ///
+    /// `@MainActor` because every UIKit construction (`UIAlertController`,
+    /// `UIAlertAction`, `present(_:animated:completion:)`) is main-thread-bound
+    /// in the iOS 26 SDK.
+    @MainActor
     func present(
         using navigationController: UIViewController,
         clock: any Clock,
@@ -68,13 +77,21 @@ public extension Toast {
             }
             alert.addAction(dismissAction)
         case let .after(duration):
+            // The clock callback may fire on any thread; hop back to main
+            // before touching UIKit. `assumeIsolated` is safe here because the
+            // production `MainQueueClock` schedules on `DispatchQueue.main`.
+            //
+            // The completion is passed through an `@unchecked Sendable` box
+            // so the `@Sendable` clock closure can capture it. Safe in practice
+            // because the wrapped closure only ever fires on the main thread.
+            let box = UncheckedSendableBox(dismissedCompletion)
             clock.schedule(after: duration) {
-                alert.dismiss(animated: true, completion: dismissedCompletion)
+                MainActor.assumeIsolated {
+                    alert.dismiss(animated: true, completion: box.value)
+                }
             }
         }
 
-        DispatchQueue.main.async {
-            navigationController.present(alert, animated: true, completion: nil)
-        }
+        navigationController.present(alert, animated: true, completion: nil)
     }
 }

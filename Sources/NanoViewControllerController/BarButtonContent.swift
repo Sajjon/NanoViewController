@@ -7,10 +7,14 @@ import UIKit
 /// (text/icon/style) without holding any UIKit objects.
 ///
 /// Convert to a real `UIBarButtonItem` via `makeBarButtonItem(target:selector:)`.
-public struct BarButtonContent {
+///
+/// `Sendable`: pure value content (`String` / `UIImage` / `UIBarButtonItem.SystemItem`,
+/// all Sendable in the iOS 26 SDK) so the struct can flow through Combine
+/// pipelines crossing actor boundaries.
+public struct BarButtonContent: Sendable {
     /// What is rendered inside the bar button — text, an image, or a built-in
     /// system item (which has its own preset glyph and a11y label).
-    public enum ButtonType {
+    public enum ButtonType: Sendable {
         /// Display the associated string as the button's title.
         case text(String)
         /// Display the associated image as the button's icon.
@@ -59,6 +63,9 @@ public extension BarButtonContent {
     /// Style coalesces to `.plain` for non-system items; system items hand the
     /// raw `SystemItem` to the matching `UIBarButtonItem` initialiser, which
     /// already encodes its own visual style.
+    ///
+    /// `@MainActor` because `UIBarButtonItem` is `@MainActor` in the iOS 26 SDK.
+    @MainActor
     func makeBarButtonItem(target: AnyObject?, selector: Selector) -> UIBarButtonItem {
         switch type {
         case let .image(image): UIBarButtonItem(image: image, style: style ?? .plain, target: target, action: selector)

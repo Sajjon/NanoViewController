@@ -8,7 +8,11 @@ import Foundation
 /// Publishers (`viewDidLoad`, bar-button triggers) flow **from** the `SceneController`
 /// **into** the ViewModel. Subjects (`titleSubject`, `toastSubject`, etc.) flow the
 /// other direction: the ViewModel `send`s values to drive UI the controller owns.
-public struct InputFromController {
+///
+/// `@unchecked Sendable` because Combine's `AnyPublisher` and `PassthroughSubject`
+/// aren't formally `Sendable` in older SDKs, even though they're thread-safe
+/// in practice for the `send`/`sink` patterns this struct is used with.
+public struct InputFromController: @unchecked Sendable {
     /// Fires once, right after the controller's `viewDidLoad`.
     public let viewDidLoad: AnyPublisher<Void, Never>
 

@@ -9,6 +9,10 @@ import Foundation
 /// assigns `sceneTitle` to `UIViewController.title`. Conformers only need to
 /// override `static var title` — the instance-side `sceneTitle` is provided
 /// by the default extension.
+///
+/// `@MainActor` because conformers are `UIViewController` subclasses, which
+/// become `@MainActor` in the iOS 26 SDK.
+@MainActor
 public protocol TitledScene {
     /// The string to display in the navigation bar for this scene type.
     /// Defaults to the empty string (no title) via the protocol extension.

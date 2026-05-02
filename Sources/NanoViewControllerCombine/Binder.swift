@@ -9,27 +9,28 @@ import Foundation
 /// (`Publisher+Operators.swift`) drives values into a binder; UIKit extensions
 /// expose binders as properties (e.g. `UIControl.isEnabledBinder`,
 /// `UIView.isVisibleBinder`).
+///
+/// `@MainActor` because every binding writes to a UIKit object — `@MainActor`
+/// in the iOS 26 SDK. The `-->` operator hops to `RunLoop.main` first and then
+/// uses `MainActor.assumeIsolated` to call ``on(_:)``, so backing off to a
+/// `Thread.isMainThread`-style runtime check is no longer needed.
+@MainActor
 public struct Binder<Value> {
-    /// Thread-aware closure that applies a value to the wrapped object. Assigned
-    /// once in `init` and never mutated.
+    /// Closure that applies a value to the wrapped (weakly-held) object.
+    /// Assigned once in `init` and never mutated.
     private let _binding: (Value) -> Void
 
     /// Creates a binder that writes `Value`s into `object` via `binding`.
     ///
     /// `object` is captured weakly. If the underlying object has been deallocated
-    /// by the time a value arrives, the write is silently dropped. Writes from a
-    /// background thread are dispatched to `DispatchQueue.main`.
+    /// by the time a value arrives, the write is silently dropped.
     public init<Object: AnyObject>(
         _ object: Object,
         binding: @escaping (Object, Value) -> Void
     ) {
         _binding = { [weak object] value in
             guard let object else { return }
-            if Thread.isMainThread {
-                binding(object, value)
-            } else {
-                DispatchQueue.main.async { binding(object, value) }
-            }
+            binding(object, value)
         }
     }
 

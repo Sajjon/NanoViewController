@@ -5,6 +5,10 @@ import UIKit
 /// Protocol for table-view cells that can be populated from a typed `Model`.
 /// Used together with `SingleCellTypeTableView` so the table → cell wiring
 /// stays statically type-checked end-to-end.
+///
+/// `@MainActor` because conformers are `UITableViewCell` subclasses (`@MainActor`
+/// in the iOS 26 SDK) and `configure(model:)` mutates view state.
+@MainActor
 public protocol CellConfigurable {
     /// The model type this cell knows how to render.
     associatedtype Model

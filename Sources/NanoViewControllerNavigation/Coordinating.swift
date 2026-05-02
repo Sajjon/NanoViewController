@@ -20,6 +20,11 @@ public typealias DismissScene = (_ animatedDismiss: Bool, _ presentationCompleti
 /// a rich coordinator-tree dump declare conformance themselves and provide the
 /// `description` (Zhip's `Coordinating+DebugPrinting.swift` does this with
 /// `stringRepresentation(level:)`).
+///
+/// `@MainActor` because `var navigationController: UINavigationController`
+/// (and every push/present/replace helper that operates on it) is
+/// main-thread-bound under iOS 26's `@MainActor`-on-UIKit annotations.
+@MainActor
 public protocol Coordinating: AnyObject {
     /// Sub-flows currently in flight. The parent appends children when starting
     /// them and removes them in `remove(childCoordinator:)` once they finish.

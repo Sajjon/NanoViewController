@@ -7,6 +7,7 @@ import XCTest
 
 /// Tests `Binder<Value>` — the write-only, main-thread UI primitive used by
 /// `populate(with:)` to propagate ViewModel output into UIKit controls.
+@MainActor
 final class BinderTests: XCTestCase {
     final class Box {
         var value: Int = 0

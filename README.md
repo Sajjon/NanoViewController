@@ -16,7 +16,7 @@ The package ships six independent SPM library targets so consumers can pick exac
 | `NanoViewControllerSceneViews` | UIKit views | `AbstractSceneView`, `BaseScrollableStackViewOwner`, `BaseTableViewOwner`, `SingleCellTypeTableView`, `CellConfigurable`, pull-to-refresh / class-identifiable / footer plumbing |
 | `NanoViewControllerDIPrimitives` | DI protocols | `Clock`, `MainScheduler`, `DateProvider`, `HapticFeedback`, `Pasteboard`, `UrlOpener` |
 
-`Combine`, `Navigation`, `Controller`, `SceneViews`, `DIPrimitives` all depend on `Core`. UIKit modules (`Controller`, `SceneViews`, `DIPrimitives`) need iOS 17+; pure value-type modules build on macOS too.
+`Combine`, `Navigation`, `Controller`, `SceneViews`, `DIPrimitives` all depend on `Core`. UIKit modules (`Controller`, `SceneViews`, `DIPrimitives`) need iOS 26+; pure value-type modules build on macOS 14+ too. Every target compiles in Swift 6.2 language mode (`swift-tools-version: 6.2`) so the package's `@MainActor`-on-UIKit annotations are enforced as hard errors at the consumer's call site.
 
 # Local development
 

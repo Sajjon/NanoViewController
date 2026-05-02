@@ -9,6 +9,10 @@ import UIKit
 /// conformance and pushes the layout onto its `navigationBar` — so per-screen
 /// styling (e.g. translucent vs opaque, hidden bar) lives on the controller
 /// instance instead of in shared appearance proxies.
+///
+/// `@MainActor` because conformers are `UIViewController` subclasses
+/// (`@MainActor` in the iOS 26 SDK).
+@MainActor
 public protocol NavigationBarLayoutOwner {
     /// The styling the controller wants applied while it's on screen.
     var navigationBarLayout: NavigationBarLayout { get }
@@ -59,7 +63,11 @@ public extension UINavigationBar {
 /// All fields are required at construction. The package ships no
 /// brand-default values — consumers like Zhip layer their own factories on
 /// top via `extension NavigationBarLayout { static var opaque: ... }`.
-public struct NavigationBarLayout: Equatable {
+///
+/// `Sendable`: every field is a value of a Sendable UIKit type (`UIColor`,
+/// `UIFont`, `UIImage`, `UIBarStyle`) so the struct can flow across actor
+/// boundaries safely.
+public struct NavigationBarLayout: Equatable, Sendable {
     /// Field-by-field equality (`UIImage` and dictionary equality not auto-synthesized).
     public static func == (lhs: NavigationBarLayout, rhs: NavigationBarLayout) -> Bool {
         lhs.visibility == rhs.visibility &&
@@ -132,7 +140,7 @@ public struct NavigationBarLayout: Equatable {
 public extension NavigationBarLayout {
     /// Whether the navigation bar is visible, plus whether the visibility
     /// transition itself should be animated.
-    enum Visibility: Equatable {
+    enum Visibility: Equatable, Sendable {
         /// Bar should be hidden; `animated` controls the show/hide transition.
         case hidden(animated: Bool)
         /// Bar should be visible; `animated` controls the show/hide transition.

@@ -45,7 +45,12 @@ public struct UIControlPublisher<Control: UIControl>: Publisher {
 
 /// Per-subscription `Subscription` object. See the original Zhip source for
 /// the full design rationale.
-final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscription
+///
+/// `@unchecked Sendable` because the only mutable fields (`subscriber`, the
+/// weak `control` ref) are touched on `init`, `cancel`, and the `@objc`
+/// `handleEvent` selector — UIKit dispatches all three on the main thread,
+/// matching the `MainActor.assumeIsolated` boundary used inside `init`/`cancel`.
+final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscription, @unchecked Sendable
     where S.Input == Void, S.Failure == Never
 {
     private var subscriber: S?
@@ -56,13 +61,20 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
         self.subscriber = subscriber
         self.control = control
         self.events = events
-        control.addTarget(self, action: #selector(handleEvent), for: events)
+        // `addTarget` is `@MainActor` in the iOS 26 SDK. The publisher is only
+        // ever subscribed-to from `populate(with:)` (already main-thread), so
+        // assuming main-actor isolation here is safe.
+        MainActor.assumeIsolated {
+            control.addTarget(self, action: #selector(handleEvent), for: events)
+        }
     }
 
     func request(_: Subscribers.Demand) {}
 
     func cancel() {
-        control?.removeTarget(self, action: #selector(handleEvent), for: events)
+        MainActor.assumeIsolated {
+            control?.removeTarget(self, action: #selector(handleEvent), for: events)
+        }
         subscriber = nil
     }
 

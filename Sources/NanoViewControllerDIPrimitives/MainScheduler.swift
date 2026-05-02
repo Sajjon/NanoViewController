@@ -14,16 +14,18 @@ import Foundation
 /// invokes work synchronously on the calling thread. With the immediate
 /// scheduler in place, coordinator/navigation tests can assert on side
 /// effects without pumping the runloop.
-public protocol MainScheduler: AnyObject {
+///
+/// `Sendable` so DI containers can pass instances across actor boundaries.
+public protocol MainScheduler: AnyObject, Sendable {
     /// Schedules `work` to run on the main thread.
-    func schedule(_ work: @escaping () -> Void)
+    func schedule(_ work: @escaping @Sendable () -> Void)
 }
 
 /// Production `MainScheduler` backed by `DispatchQueue.main.async`.
 public final class DispatchMainScheduler: MainScheduler {
     public init() {}
 
-    public func schedule(_ work: @escaping () -> Void) {
+    public func schedule(_ work: @escaping @Sendable () -> Void) {
         DispatchQueue.main.async(execute: work)
     }
 }
@@ -33,7 +35,7 @@ public final class DispatchMainScheduler: MainScheduler {
 public final class ImmediateMainScheduler: MainScheduler {
     public init() {}
 
-    public func schedule(_ work: @escaping () -> Void) {
+    public func schedule(_ work: @escaping @Sendable () -> Void) {
         work()
     }
 }
