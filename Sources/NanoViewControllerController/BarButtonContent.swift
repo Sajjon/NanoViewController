@@ -2,11 +2,44 @@
 
 import UIKit
 
-/// A description of the *content* of a navigation bar button, decoupled from the
-/// `UIBarButtonItem` instance itself. Lets ViewModels emit reactive content updates
-/// (text/icon/style) without holding any UIKit objects.
+/// A description of the *content* of a navigation bar button, decoupled from
+/// the `UIBarButtonItem` instance itself.
 ///
-/// Convert to a real `UIBarButtonItem` via `makeBarButtonItem(target:selector:)`.
+/// Lets ViewModels emit reactive content updates (text/icon/style) without
+/// holding any UIKit objects. Convert to a real `UIBarButtonItem` via
+/// ``makeBarButtonItem(target:selector:)``.
+///
+/// ## Example — static bar-button content
+///
+/// ```swift
+/// final class SignUpScene: Scene<SignUpView>, RightBarButtonContentMaking {
+///     static var title: String { "Sign up" }
+///     // A `Skip` button on the top-right.
+///     static var makeRightContent: BarButtonContent {
+///         BarButtonContent(title: "Skip", style: .plain)
+///     }
+/// }
+/// ```
+///
+/// ## Example — dynamic bar-button content driven by a publisher
+///
+/// ```swift
+/// final class EditProfileViewModel: BaseViewModel<…> {
+///     override func transform(input: Input) -> Output {
+///         let canSave = input.fromView.firstName.combineLatest(input.fromView.lastName)
+///             .map { !$0.isEmpty && !$1.isEmpty }
+///
+///         // Update the right bar button's enabled-ness via dynamic content.
+///         canSave
+///             .map { enabled in
+///                 BarButtonContent(title: "Save", style: enabled ? .done : .plain)
+///             }
+///             .sink { input.fromController.rightBarButtonContentSubject.send($0) }
+///             .store(in: &cancellables)
+///         // …
+///     }
+/// }
+/// ```
 public struct BarButtonContent {
     /// What is rendered inside the bar button — text, an image, or a built-in
     /// system item (which has its own preset glyph and a11y label).
@@ -21,30 +54,61 @@ public struct BarButtonContent {
 
     /// The visual content of the button.
     public let type: ButtonType
-    /// Optional `UIBarButtonItem.Style` override. Ignored for `.system(_)` content
-    /// (system items pick their own style). Falls back to `.plain` if nil.
+
+    /// Optional `UIBarButtonItem.Style` override. Ignored for `.system(_)`
+    /// content (system items pick their own style). Falls back to `.plain`
+    /// if nil.
     public let style: UIBarButtonItem.Style?
 
-    /// Designated initialiser. `style` defaults to `.plain` to match UIKit's
-    /// default behaviour when no style is supplied.
+    /// Designated initialiser.
+    ///
+    /// `style` defaults to `.plain` to match UIKit's default behaviour when
+    /// no style is supplied.
+    ///
+    /// - Parameters:
+    ///   - type: Text / image / system kind.
+    ///   - style: Optional UIKit style override.
     public init(type: ButtonType, style: UIBarButtonItem.Style? = .plain) {
         self.type = type
         self.style = style
     }
 
-    /// Convenience for text buttons. `CustomStringConvertible` lets call sites
-    /// pass either a `String` directly or any value with a `description`.
+    /// Convenience for text buttons.
+    ///
+    /// `CustomStringConvertible` lets call sites pass either a `String`
+    /// directly or any value with a `description`.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// BarButtonContent(title: "Save", style: .done)
+    /// BarButtonContent(title: 42)              // -> "42"
+    /// ```
     public init(title: CustomStringConvertible, style: UIBarButtonItem.Style = .plain) {
         self.init(type: .text(title.description), style: style)
     }
 
     /// Convenience for image buttons.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// BarButtonContent(image: UIImage(systemName: "gear")!)
+    /// ```
     public init(image: UIImage, style: UIBarButtonItem.Style = .plain) {
         self.init(type: .image(image), style: style)
     }
 
-    /// Convenience for system buttons. No style argument because system items
-    /// override the style anyway.
+    /// Convenience for system buttons.
+    ///
+    /// No style argument because system items override the style anyway.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// BarButtonContent(system: .add)
+    /// BarButtonContent(system: .cancel)
+    /// ```
     public init(system: UIBarButtonItem.SystemItem) {
         self.init(type: .system(system))
     }
@@ -56,9 +120,20 @@ public extension BarButtonContent {
     /// Materialises this content description into a real `UIBarButtonItem`,
     /// wired to the supplied `target`/`selector` for tap handling.
     ///
-    /// Style coalesces to `.plain` for non-system items; system items hand the
-    /// raw `SystemItem` to the matching `UIBarButtonItem` initialiser, which
-    /// already encodes its own visual style.
+    /// Style coalesces to `.plain` for non-system items; system items hand
+    /// the raw `SystemItem` to the matching `UIBarButtonItem` initialiser,
+    /// which already encodes its own visual style.
+    ///
+    /// ``AbstractController/setRightBarButtonUsing(content:)`` and the left-
+    /// hand variant call this with the controller's
+    /// ``AbstractController/rightBarButtonAbstractTarget`` /
+    /// ``AbstractController/leftBarButtonAbstractTarget`` and
+    /// `#selector(AbstractTarget.pressed)`. You rarely call this directly.
+    ///
+    /// - Parameters:
+    ///   - target: The `@objc` target object UIKit invokes on tap.
+    ///   - selector: The selector UIKit invokes on `target`.
+    /// - Returns: A fully wired `UIBarButtonItem`.
     func makeBarButtonItem(target: AnyObject?, selector: Selector) -> UIBarButtonItem {
         switch type {
         case let .image(image): UIBarButtonItem(image: image, style: style ?? .plain, target: target, action: selector)
