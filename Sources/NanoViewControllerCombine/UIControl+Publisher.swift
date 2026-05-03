@@ -96,6 +96,14 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
     private weak var control: Control?
     private let events: UIControl.Event
 
+    /// Non-generic `@objc` target. Generic classes can't reliably expose
+    /// their `@objc` methods to the Obj-C runtime (the synthesised selector
+    /// names get mangled with the generic specialisation), so the actual
+    /// `target/action` registration goes through this dedicated, plain
+    /// `NSObject` subclass. The action forwards to the subscription via a
+    /// captured callback.
+    private let target = ControlEventTarget()
+
     init(subscriber: S, control: Control, events: UIControl.Event) {
         self.subscriber = subscriber
         self.control = control
@@ -104,9 +112,16 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
         // subscribed-to from `populate(with:)` (already main-actor), so the
         // common path is `Thread.isMainThread == true`. Hop to main as a
         // safety net for any caller that subscribes off-main.
-        Self.runOnMain { [weak self] in
-            guard let self else { return }
-            control.addTarget(self, action: #selector(Self.handleEvent), for: events)
+        //
+        // Strong capture of `self` is intentional: the closure must run
+        // before any event fires (otherwise the subscription is missing its
+        // target/action registration). The capture extends `self`'s lifetime
+        // only until the closure runs, after which the closure is released.
+        Self.runOnMain { [self] in
+            target.callback = { [weak self] in
+                _ = self?.subscriber?.receive(())
+            }
+            control.addTarget(target, action: #selector(ControlEventTarget.fire), for: events)
         }
     }
 
@@ -119,15 +134,21 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
     ///
     /// Combine may invoke `cancel()` from any thread (e.g. `AnyCancellable`
     /// `deinit` running off-main), so we hop to main rather than asserting
-    /// isolation. The off-main path schedules an `async` removal, which is
-    /// safe because UIKit's target/action map is itself main-actor-isolated.
+    /// isolation. Both the `removeTarget` call AND the `subscriber = nil`
+    /// write happen inside the same main-thread block, so the action
+    /// callback (which only fires on main) never observes a torn write.
+    ///
+    /// Strong capture of `self` extends the subscription's lifetime until
+    /// the main hop completes. A `[weak self]` capture would race with
+    /// `AnyCancellable.deinit` releasing its only strong reference: the hop
+    /// could resolve `nil` before `removeTarget` ran, leaving a stale
+    /// pointer in UIKit's target/action map.
     func cancel() {
-        Self.runOnMain { [weak self, control = control, events = events] in
-            control?.removeTarget(self, action: #selector(Self.handleEvent), for: events)
+        Self.runOnMain { [self] in
+            control?.removeTarget(target, action: #selector(ControlEventTarget.fire), for: events)
+            target.callback = nil
+            subscriber = nil
         }
-        // `subscriber = nil` is fine off-main — `subscriber` is a stored
-        // generic property, not a `@MainActor`-isolated UIKit reference.
-        subscriber = nil
     }
 
     /// Runs a `@MainActor` block synchronously when already on main,
@@ -147,9 +168,16 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
             }
         }
     }
+}
 
-    @objc private func handleEvent() {
-        _ = subscriber?.receive(())
+/// Non-generic `@objc` target that bridges UIKit's selector dispatch to a
+/// Swift closure. Lives outside ``UIControlSubscription`` so its `@objc`
+/// methods aren't subject to generic-specialisation name mangling.
+private final class ControlEventTarget: NSObject {
+    var callback: (() -> Void)?
+
+    @objc func fire() {
+        callback?()
     }
 }
 

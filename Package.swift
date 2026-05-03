@@ -95,5 +95,10 @@ let package = Package(
             dependencies: ["NanoViewControllerCombine"],
             swiftSettings: swift6Mode
         ),
+        .testTarget(
+            name: "NanoViewControllerDIPrimitivesTests",
+            dependencies: ["NanoViewControllerDIPrimitives"],
+            swiftSettings: swift6Mode
+        ),
     ]
 )
