@@ -33,11 +33,10 @@ final class SinkOnMainTests: XCTestCase {
         var received: [Int] = []
 
         subject
-            .sinkOnMain(schedule: { block in
-                MainActor.assumeIsolated { block() }
-            }) { value in
-                received.append(value)
-            }
+            .sinkOnMain(
+                schedule: { block in MainActor.assumeIsolated { block() } },
+                { value in received.append(value) }
+            )
             .store(in: &cancellables)
 
         subject.send(1)
@@ -78,11 +77,10 @@ final class SinkOnMainTests: XCTestCase {
         let subject = PassthroughSubject<Int, Never>()
         var received: [Int] = []
 
-        let cancellable = subject.sinkOnMain(schedule: { block in
-            MainActor.assumeIsolated { block() }
-        }) { value in
-            received.append(value)
-        }
+        let cancellable = subject.sinkOnMain(
+            schedule: { block in MainActor.assumeIsolated { block() } },
+            { value in received.append(value) }
+        )
 
         subject.send(1)
         cancellable.cancel()
