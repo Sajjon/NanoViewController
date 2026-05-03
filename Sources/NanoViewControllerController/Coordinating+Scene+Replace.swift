@@ -125,19 +125,39 @@ public extension UINavigationController {
         forceReplaceAllVCsInsteadOfPush: Bool = false,
         completion: Completion? = nil
     ) {
-        if viewControllers.isEmpty || forceReplaceAllVCsInsteadOfPush {
+        // Track whether the actual transition we performed was animated, so
+        // the completion-routing below uses the right branch. (Forcing
+        // `animated: false` on the empty-stack branch below means the
+        // caller-supplied `animated: true` doesn't apply for that path.)
+        let didAnimate: Bool
+        if viewControllers.isEmpty {
+            // Seating the first VC into a fresh nav stack — UIKit's
+            // `setViewControllers([vc], animated: true)` would still spin a
+            // ~0.35s push-style animation on a nav controller the user hasn't
+            // seen yet (typical case: this is a modal nav controller about
+            // to be `present(animated: true)`-ed by the caller — the user
+            // only ever sees the modal-present animation, never the
+            // empty-to-first-VC inner one). Force `animated: false` here so
+            // the visible-to-user animation chain isn't gated on an
+            // invisible-to-user one finishing first.
+            setViewControllers([viewController], animated: false)
+            didAnimate = false
+        } else if forceReplaceAllVCsInsteadOfPush {
             setViewControllers([viewController], animated: animated)
+            didAnimate = animated
         } else {
             pushViewController(viewController, animated: animated)
+            didAnimate = animated
         }
 
         // Add extra functionality to pass a "completion" closure even for
         // `push`ed ViewControllers (UIKit doesn't ship a push-with-completion API).
         guard let completion else { return }
         // If there is no transition coordinator (i.e. we set VCs without an
-        // animation context), schedule the completion for the next runloop
-        // tick so callers observe a fully-applied stack.
-        guard animated, let coordinator = transitionCoordinator else {
+        // animation context, or forced animated:false above), schedule the
+        // completion for the next runloop tick so callers observe a fully-
+        // applied stack.
+        guard didAnimate, let coordinator = transitionCoordinator else {
             DispatchQueue.main.async { completion() }
             return
         }
