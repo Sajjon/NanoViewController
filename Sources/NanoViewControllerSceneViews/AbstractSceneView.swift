@@ -104,18 +104,31 @@ open class AbstractSceneView: UIView, ScrollViewOwner {
     /// Override hook for subclasses that need non-edge-pinning constraints
     /// (e.g. a header that sits above the scroll view).
     ///
-    /// Default pins the scroll view to all four edges of `self`.
+    /// Default pins the scroll view's leading / trailing / top to `self`,
+    /// and pins the bottom to ``UIView/keyboardLayoutGuide``'s top so the
+    /// scroll view automatically shrinks when the keyboard appears and the
+    /// user can scroll to reveal content the keyboard would otherwise cover.
+    /// `keyboardLayoutGuide.usesBottomSafeArea` is set to `false` in
+    /// ``setupAbstractSceneView()``, so when no keyboard is on screen the
+    /// guide's top tracks `self.bottomAnchor` (under the home indicator) —
+    /// the resting layout is identical to a plain `bottomAnchor` pin and
+    /// is unaffected on scenes that don't have any text input.
+    ///
+    /// No `NSNotificationCenter` keyboard-frame observer boilerplate and no
+    /// `IQKeyboardManager`-style global swizzling — `keyboardLayoutGuide` is
+    /// a first-class UIKit citizen that the package consumes directly.
     ///
     /// ## Example
     ///
     /// ```swift
     /// override func setupScrollViewConstraints() {
-    ///     // Reserve 60pt at the top for a sticky header.
+    ///     // Reserve 60pt at the top for a sticky header. Keep the
+    ///     // keyboard-aware bottom pin from the default.
     ///     NSLayoutConstraint.activate([
     ///         scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
     ///         scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
     ///         scrollView.topAnchor.constraint(equalTo: topAnchor, constant: 60),
-    ///         scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+    ///         scrollView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
     ///     ])
     /// }
     /// ```
@@ -124,7 +137,7 @@ open class AbstractSceneView: UIView, ScrollViewOwner {
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
         ])
     }
 
@@ -157,6 +170,17 @@ private extension AbstractSceneView {
 
         translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        // Opt out of `keyboardLayoutGuide`'s default safe-area inclusion.
+        // With `usesBottomSafeArea = true` (Apple's default), the guide's
+        // top sits at `safeAreaLayoutGuide.bottomAnchor` when no keyboard
+        // is visible — which would make every scene 34pt shorter on
+        // home-indicator devices, even ones with no text input. With it
+        // `false`, the guide tracks the view's bottom edge (under the
+        // home indicator) at rest and moves up only when a keyboard is
+        // actually on screen. Net effect: identical resting layout to
+        // pre-keyboard-avoidance, plus automatic shrink when typing.
+        keyboardLayoutGuide.usesBottomSafeArea = false
 
         addSubview(scrollView)
         setupScrollViewConstraints()
