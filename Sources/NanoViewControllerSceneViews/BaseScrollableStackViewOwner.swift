@@ -114,9 +114,16 @@ private extension BaseScrollableStackViewOwner {
     ///
     ///   * matches the scroll view's width (so horizontal scrolling is disabled),
     ///   * is at least as tall as the scroll view (so short content centres),
-    ///   * hugs all four edges (`topToSafeArea: false` so content can extend
-    ///     under the nav bar; `bottomToSafeArea` only when pull-to-refresh
-    ///     is in play, so the spinner clears the home indicator).
+    ///   * pins top to `contentLayoutGuide.topAnchor` so content can extend
+    ///     under the nav bar, and bottom to `keyboardLayoutGuide.topAnchor`
+    ///     to **match** the scroll view's own bottom anchor (set in
+    ///     ``AbstractSceneView/setupScrollViewConstraints()``).
+    ///
+    /// The bottom-anchor alignment is load-bearing: if the content view
+    /// extended below the scroll view's frame (e.g. by pinning to
+    /// `self.bottomAnchor` while the scroll view stops at the safe area),
+    /// devices with a home indicator would gain ~34pt of blank scrollable
+    /// space at the bottom even when no keyboard is on screen.
     func setupBaseScrollableStackViewOwner() {
         scrollViewContentView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -124,8 +131,6 @@ private extension BaseScrollableStackViewOwner {
 
         let contentLayoutGuide = scrollView.contentLayoutGuide
         let frameLayoutGuide = scrollView.frameLayoutGuide
-        let bottomToSafeArea = self is PullToRefreshCapable
-        let bottomAnchor = bottomToSafeArea ? safeAreaLayoutGuide.bottomAnchor : bottomAnchor
 
         let heightAtLeastFrame = scrollViewContentView.heightAnchor.constraint(
             greaterThanOrEqualTo: frameLayoutGuide.heightAnchor
@@ -138,7 +143,7 @@ private extension BaseScrollableStackViewOwner {
             scrollViewContentView.leadingAnchor.constraint(equalTo: contentLayoutGuide.leadingAnchor),
             scrollViewContentView.trailingAnchor.constraint(equalTo: contentLayoutGuide.trailingAnchor),
             scrollViewContentView.topAnchor.constraint(equalTo: contentLayoutGuide.topAnchor),
-            scrollViewContentView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollViewContentView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
         ])
     }
 }

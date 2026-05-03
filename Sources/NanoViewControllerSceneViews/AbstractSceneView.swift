@@ -112,8 +112,9 @@ open class AbstractSceneView: UIView, ScrollViewOwner {
     /// coincides with `safeAreaLayoutGuide.bottomAnchor`, so layout looks
     /// identical to a plain `bottomAnchor` pin in the resting state.
     ///
-    /// Available everywhere the package targets (iOS 15+); no observer
-    /// boilerplate, no `IQKeyboardManager`-style global swizzling.
+    /// No `NSNotificationCenter` keyboard-frame observer boilerplate and no
+    /// `IQKeyboardManager`-style global swizzling — `keyboardLayoutGuide` is
+    /// a first-class UIKit citizen that the package consumes directly.
     ///
     /// ## Example
     ///
