@@ -60,15 +60,28 @@ import Foundation
 ///
 /// `@unchecked Sendable` because `PassthroughSubject` itself does not yet
 /// conform to `Sendable` (Apple's Combine has not been audited for Swift 6
-/// strict concurrency). The unchecked claim is safe here because every
-/// mutation of `navigationSubject` is funnelled through ``next(_:)``, which
-/// hops to the main actor before sending; the lazy `navigation` accessor is
-/// `@MainActor`-isolated. Remove `@unchecked` when Combine's
-/// `PassthroughSubject` gains native `Sendable` conformance.
+/// strict concurrency). The unchecked claim is safe here because:
+///
+///   * Every `send` on `navigationSubject` goes through ``next(_:)``, which
+///     guarantees the send happens on the main actor (synchronously when
+///     already on main, via `Task { @MainActor in … }` otherwise).
+///   * The lazy `navigation` accessor is `@MainActor`-isolated, so all
+///     reads (subscription registration, demand requests) originate on
+///     main.
+///   * Combine's own subscription / cancellation / demand bookkeeping on
+///     `PassthroughSubject` is documented thread-safe, so even if a sink
+///     stored in a `@MainActor` `cancellables` bag is torn down off-main
+///     (`AnyCancellable.deinit` from a non-main context), the resulting
+///     internal mutation doesn't race with our `send`s.
+///
+/// Remove `@unchecked` when Combine's `PassthroughSubject` gains native
+/// `Sendable` conformance.
 @MainActor
 public final class Navigator<NavigationStep>: @unchecked Sendable {
     /// Internal backing subject. Exposed read-only via ``navigation``. All
-    /// writes go through ``next(_:)`` which guarantees a main-actor hop.
+    /// `send` calls go through ``next(_:)``, which guarantees the send
+    /// happens on the main actor; subscription / cancellation / demand
+    /// bookkeeping is thread-safe on `PassthroughSubject` itself.
     private let navigationSubject = PassthroughSubject<NavigationStep, Never>()
 
     /// Erased publisher coordinators subscribe to.
