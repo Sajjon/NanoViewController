@@ -108,9 +108,11 @@ open class AbstractSceneView: UIView, ScrollViewOwner {
     /// and pins the bottom to ``UIView/keyboardLayoutGuide``'s top so the
     /// scroll view automatically shrinks when the keyboard appears and the
     /// user can scroll to reveal content the keyboard would otherwise cover.
-    /// When no keyboard is on screen `keyboardLayoutGuide.topAnchor`
-    /// coincides with `safeAreaLayoutGuide.bottomAnchor`, so layout looks
-    /// identical to a plain `bottomAnchor` pin in the resting state.
+    /// `keyboardLayoutGuide.usesBottomSafeArea` is set to `false` in
+    /// ``setupAbstractSceneView()``, so when no keyboard is on screen the
+    /// guide's top tracks `self.bottomAnchor` (under the home indicator) —
+    /// the resting layout is identical to a plain `bottomAnchor` pin and
+    /// is unaffected on scenes that don't have any text input.
     ///
     /// No `NSNotificationCenter` keyboard-frame observer boilerplate and no
     /// `IQKeyboardManager`-style global swizzling — `keyboardLayoutGuide` is
@@ -168,6 +170,17 @@ private extension AbstractSceneView {
 
         translatesAutoresizingMaskIntoConstraints = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+
+        // Opt out of `keyboardLayoutGuide`'s default safe-area inclusion.
+        // With `usesBottomSafeArea = true` (Apple's default), the guide's
+        // top sits at `safeAreaLayoutGuide.bottomAnchor` when no keyboard
+        // is visible — which would make every scene 34pt shorter on
+        // home-indicator devices, even ones with no text input. With it
+        // `false`, the guide tracks the view's bottom edge (under the
+        // home indicator) at rest and moves up only when a keyboard is
+        // actually on screen. Net effect: identical resting layout to
+        // pre-keyboard-avoidance, plus automatic shrink when typing.
+        keyboardLayoutGuide.usesBottomSafeArea = false
 
         addSubview(scrollView)
         setupScrollViewConstraints()
