@@ -104,18 +104,28 @@ open class AbstractSceneView: UIView, ScrollViewOwner {
     /// Override hook for subclasses that need non-edge-pinning constraints
     /// (e.g. a header that sits above the scroll view).
     ///
-    /// Default pins the scroll view to all four edges of `self`.
+    /// Default pins the scroll view's leading / trailing / top to `self`,
+    /// and pins the bottom to ``UIView/keyboardLayoutGuide``'s top so the
+    /// scroll view automatically shrinks when the keyboard appears and the
+    /// user can scroll to reveal content the keyboard would otherwise cover.
+    /// When no keyboard is on screen `keyboardLayoutGuide.topAnchor`
+    /// coincides with `safeAreaLayoutGuide.bottomAnchor`, so layout looks
+    /// identical to a plain `bottomAnchor` pin in the resting state.
+    ///
+    /// Available everywhere the package targets (iOS 15+); no observer
+    /// boilerplate, no `IQKeyboardManager`-style global swizzling.
     ///
     /// ## Example
     ///
     /// ```swift
     /// override func setupScrollViewConstraints() {
-    ///     // Reserve 60pt at the top for a sticky header.
+    ///     // Reserve 60pt at the top for a sticky header. Keep the
+    ///     // keyboard-aware bottom pin from the default.
     ///     NSLayoutConstraint.activate([
     ///         scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
     ///         scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
     ///         scrollView.topAnchor.constraint(equalTo: topAnchor, constant: 60),
-    ///         scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+    ///         scrollView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
     ///     ])
     /// }
     /// ```
@@ -124,7 +134,7 @@ open class AbstractSceneView: UIView, ScrollViewOwner {
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
         ])
     }
 
