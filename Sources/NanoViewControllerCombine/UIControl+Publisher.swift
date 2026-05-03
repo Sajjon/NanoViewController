@@ -130,14 +130,21 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
         subscriber = nil
     }
 
-    /// Runs `block` synchronously when already on main, otherwise hops via
-    /// `DispatchQueue.main.async`. Avoids the `MainActor.assumeIsolated`
-    /// trap for off-main `cancel()` calls.
-    private static func runOnMain(_ block: @escaping @Sendable () -> Void) {
+    /// Runs a `@MainActor` block synchronously when already on main,
+    /// otherwise hops via `DispatchQueue.main.async`. Avoids the
+    /// `MainActor.assumeIsolated` trap for off-main `cancel()` calls.
+    ///
+    /// The block is statically `@MainActor` so the compiler enforces that
+    /// call-site closures only touch main-actor-isolated state — the comment
+    /// claim ("addTarget/removeTarget are main-actor-only") is now backed by
+    /// the type system rather than a runtime precondition.
+    private static func runOnMain(_ block: @escaping @MainActor () -> Void) {
         if Thread.isMainThread {
             MainActor.assumeIsolated { block() }
         } else {
-            DispatchQueue.main.async { block() }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { block() }
+            }
         }
     }
 

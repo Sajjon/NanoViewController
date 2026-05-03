@@ -50,8 +50,9 @@ import Combine
 ///     // in screenshots / UI tests. The builder handles `if` natively;
 ///     // there's no `[a, b] + (debug ? [c] : [])` splicing.
 ///     if FeatureFlags.showDebugLabels {
-///         output.isLoading.map(String.init).eraseToAnyPublisher()
-///             --> debugLabel.textBinder
+///         // The `-->` overloads accept any `Publisher<…, Never>`, so the
+///         // chained `.map { … }` drops in directly — no `.eraseToAnyPublisher()`.
+///         output.isLoading.map(String.init) --> debugLabel.textBinder
 ///     }
 ///
 ///     // Forward several bindings from a sub-component as one expression.

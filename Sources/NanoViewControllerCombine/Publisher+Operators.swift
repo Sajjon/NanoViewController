@@ -13,15 +13,13 @@ public extension Publisher where Failure == Never {
     /// Tests can pass `{ $0() }` to deliver values synchronously, which lets
     /// coordinator tests assert on side effects without pumping the runloop.
     ///
-    /// > Important: The `schedule` closure **must** invoke its inner block on
-    /// > the main thread. The default does, via `DispatchQueue.main.async`. A
-    /// > test fake that wants synchronous delivery (`schedule: { $0() }`)
-    /// > must therefore be called from a `@MainActor` test method. If the
-    /// > inner block runs off-main, the
-    /// > `MainActor.assumeIsolated`-bound call to `receiveValue` will trap.
-    /// > In practice this is exactly the contract callers want — they're
-    /// > driving UIKit-bound `@MainActor` handlers — but the precondition is
-    /// > worth stating explicitly.
+    /// The inner `block` of `schedule` is typed `@MainActor`, so the
+    /// compiler enforces that the schedule closure invokes it from a
+    /// main-actor-isolated context. The default does so via
+    /// `DispatchQueue.main.async` + `MainActor.assumeIsolated`. A test fake
+    /// that wants synchronous delivery can pass
+    /// `schedule: { block in MainActor.assumeIsolated { block() } }` from a
+    /// `@MainActor` test method.
     ///
     /// ## Example
     ///
@@ -39,13 +37,14 @@ public extension Publisher where Failure == Never {
     ///     main actor.
     /// - Returns: The cancellable subscription.
     func sinkOnMain(
-        schedule: @escaping @Sendable (@escaping @Sendable () -> Void)
-            -> Void = { DispatchQueue.main.async(execute: $0) },
+        schedule: @escaping @Sendable (@escaping @MainActor () -> Void) -> Void = { block in
+            DispatchQueue.main.async { MainActor.assumeIsolated { block() } }
+        },
         _ receiveValue: @escaping @MainActor (Output) -> Void
     ) -> AnyCancellable where Output: Sendable {
         sink { value in
             schedule {
-                MainActor.assumeIsolated { receiveValue(value) }
+                receiveValue(value)
             }
         }
     }
