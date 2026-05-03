@@ -92,7 +92,7 @@ import NanoViewControllerNavigation
 /// The coordinator subscribes to `signUpVM.navigator.navigation` and routes
 /// each `SignUpStep` to a push/present/finish — see ``BaseCoordinator`` for
 /// that side of the wiring.
-open class BaseViewModel<NavigationStep, InputFromView, Output>:
+open class BaseViewModel<NavigationStep: Sendable, InputFromView, Output>:
     AbstractViewModel<InputFromView, InputFromController, Output>,
     Navigating
 {

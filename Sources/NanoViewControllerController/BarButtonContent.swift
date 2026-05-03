@@ -40,10 +40,10 @@ import UIKit
 ///     }
 /// }
 /// ```
-public struct BarButtonContent {
+public struct BarButtonContent: Sendable {
     /// What is rendered inside the bar button — text, an image, or a built-in
     /// system item (which has its own preset glyph and a11y label).
-    public enum ButtonType {
+    public enum ButtonType: Sendable {
         /// Display the associated string as the button's title.
         case text(String)
         /// Display the associated image as the button's icon.
@@ -134,6 +134,7 @@ public extension BarButtonContent {
     ///   - target: The `@objc` target object UIKit invokes on tap.
     ///   - selector: The selector UIKit invokes on `target`.
     /// - Returns: A fully wired `UIBarButtonItem`.
+    @MainActor
     func makeBarButtonItem(target: AnyObject?, selector: Selector) -> UIBarButtonItem {
         switch type {
         case let .image(image): UIBarButtonItem(image: image, style: style ?? .plain, target: target, action: selector)

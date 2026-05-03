@@ -83,6 +83,12 @@ import Foundation
 /// inc.send(()); inc.send(()); dec.send(())
 /// XCTAssertEqual(collected, ["0", "1", "2", "1"])
 /// ```
+///
+/// `@MainActor` because it conforms to ``ViewModelType``, which is itself
+/// `@MainActor`. View-models in this package are inherently main-thread —
+/// they're owned by `SceneController` (a `UIViewController` subclass) and
+/// their `transform(input:)` runs on the main actor.
+@MainActor
 open class AbstractViewModel<FromView, FromController, OutputFromViewModel>: ViewModelType {
     /// Bag of Combine subscriptions owned by this ViewModel.
     ///

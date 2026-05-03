@@ -63,6 +63,10 @@ import Foundation
 /// ``AbstractController/rightBarButtonAbstractTarget`` for navigation bar
 /// buttons, and pure Combine extensions on `UIControl` (see
 /// `UIControl+Publisher.swift`) cover regular controls.
+///
+/// `@MainActor` because UIKit dispatches target/action selectors on the main
+/// thread.
+@MainActor
 public class AbstractTarget {
     /// Subject the ``pressed()`` selector pushes into.
     ///

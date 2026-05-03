@@ -46,10 +46,18 @@
 /// (and the modal/replace overloads) take a `navigationHandler` closure that
 /// receives every emitted ``NavigationStep`` so you can pattern-match on the
 /// enum and route each case to the right transition.
+///
+/// `@MainActor` because both ``Navigator`` and the conformers that hold one
+/// (``BaseCoordinator``, ``BaseViewModel``) live on the main actor in this
+/// UIKit-based architecture.
+@MainActor
 public protocol Navigating {
     /// Enum of steps the conformer can emit. Conventionally nested as
     /// `enum YourSceneStep` next to the conforming type.
-    associatedtype NavigationStep
+    /// `Sendable` because the navigation pulses flow through
+    /// ``Combine/Publisher/sinkOnMain(schedule:_:)`` which dispatches across
+    /// a thread boundary; concrete enums of trivial cases are auto-Sendable.
+    associatedtype NavigationStep: Sendable
 
     /// The pulse stream of navigation requests. ViewModels call
     /// `navigator.next(.someStep)` to request a transition; subscribers

@@ -1,6 +1,7 @@
 // MIT License — Copyright (c) 2018-2026 Open Zesame
 
 import Combine
+import NanoViewControllerCombine
 import NanoViewControllerCore
 
 /// The contract every scene's root `UIView` implements to participate in the
@@ -66,6 +67,11 @@ import NanoViewControllerCore
 /// `SceneController<WelcomeView>` then handles the rest — building the
 /// `Input`, calling `viewModel.transform(input:)`, and storing every
 /// cancellable returned by `populate(with:)` on its own `cancellables` bag.
+///
+/// `@MainActor` because every conformer is a UIView subclass — main-thread
+/// in the iOS 26 SDK. Inherits the isolation from ``EmptyInitializable``,
+/// but the explicit attribute makes it self-documenting.
+@MainActor
 public protocol ViewModelled: EmptyInitializable {
     /// The ViewModel type this view is paired with.
     associatedtype ViewModel: ViewModelType
@@ -87,6 +93,7 @@ public protocol ViewModelled: EmptyInitializable {
     ///   ``ViewModelType/transform(input:)``.
     /// - Returns: Every `AnyCancellable` produced by the bindings; the
     ///   controller stores them so they outlive the call.
+    @BindingsBuilder
     func populate(with viewModel: ViewModel.OutputVM) -> [AnyCancellable]
 }
 
@@ -102,6 +109,7 @@ public extension ViewModelled {
     ///     // (We still need the typealias and inputFromView declarations.)
     /// }
     /// ```
+    @BindingsBuilder
     func populate(with _: ViewModel.OutputVM) -> [AnyCancellable] {
         []
     }

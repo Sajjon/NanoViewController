@@ -93,6 +93,11 @@ import Foundation
 /// passwordSubject.send("hunter22")
 /// tapSubject.send(())
 /// ```
+///
+/// `@MainActor` because the input is constructed and consumed inside
+/// `SceneController` (a `UIViewController` subclass), so the whole
+/// view-model pipeline lives on the main actor.
+@MainActor
 public protocol InputType {
     /// The view-driven publishers — taps, text, toggle state, etc. Defined as a
     /// `struct` nested inside the concrete View type.

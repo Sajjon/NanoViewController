@@ -34,6 +34,7 @@ import UIKit
 ///     // … inputFromView, populate(with:)
 /// }
 /// ```
+@MainActor
 public protocol ContentViewProvider {
     /// Construct and return the content view to seat inside the container.
     ///

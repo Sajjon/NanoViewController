@@ -26,6 +26,7 @@ import UIKit
 /// depends on form validity), don't use this protocol — push values into
 /// ``InputFromController/rightBarButtonContentSubject`` from the ViewModel
 /// instead.
+@MainActor
 public protocol RightBarButtonContentMaking {
     /// The content to install as the right bar button on `viewDidLoad`.
     static var makeRightContent: BarButtonContent { get }
@@ -58,4 +59,5 @@ public extension RightBarButtonContentMaking {
 /// // After this scene appears, the user CANNOT swipe back into the (now-stale)
 /// // create-wallet flow — they have to use the explicit "Continue" CTA.
 /// ```
+@MainActor
 public protocol BackButtonHiding {}

@@ -53,6 +53,10 @@ import Combine
 ///     }
 /// }
 /// ```
+/// `@MainActor` because both producers (view-models calling ``next(_:)``)
+/// and consumers (coordinators sinking on ``navigation``) run on the main
+/// thread in this UIKit-based architecture.
+@MainActor
 public final class Navigator<NavigationStep> {
     /// Internal backing subject. Exposed read-only via ``navigation``.
     private let navigationSubject = PassthroughSubject<NavigationStep, Never>()

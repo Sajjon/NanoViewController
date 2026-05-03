@@ -6,6 +6,7 @@ import XCTest
 
 /// Tests `AbstractTarget` — the `@objc` target/action bridge that turns a
 /// UIKit selector callback into a Combine pulse on the captured subject.
+@MainActor
 final class AbstractTargetTests: XCTestCase {
     func test_pressed_forwardsEventToTriggerSubject() {
         let subject = PassthroughSubject<Void, Never>()

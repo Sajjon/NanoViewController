@@ -16,7 +16,9 @@ import Foundation
 /// site. Centralising it means every binding gets the same guarantees:
 ///
 ///   * The wrapped object is captured weakly — no retain cycles, ever.
-///   * Writes that arrive on a background thread are hopped to `DispatchQueue.main`.
+///   * Writes happen on the main actor (the binder is `@MainActor`); the
+///     `-->` operator hops to `RunLoop.main` first, so callers don't have
+///     to think about thread affinity at the binding site.
 ///   * Writes after the wrapped object is deallocated are silently dropped.
 ///
 /// ## Example — wiring up a custom binder
@@ -56,8 +58,13 @@ import Foundation
 /// let cancellable = viewModelOutput.title --> titleLabel
 /// // store it: cancellable.store(in: &cancellables)
 /// ```
+///
+/// `@MainActor` because every binding writes to a UIKit object — `@MainActor`
+/// in the iOS 26 SDK. The `-->` operator hops to `RunLoop.main` first, so by
+/// the time `on(_:)` runs the caller is already on the main actor.
+@MainActor
 public struct Binder<Value> {
-    /// Thread-aware closure that applies a value to the wrapped object.
+    /// Closure that applies a value to the wrapped (weakly-held) object.
     /// Assigned once in ``init(_:binding:)`` and never mutated afterwards.
     private let _binding: (Value) -> Void
 
@@ -68,12 +75,9 @@ public struct Binder<Value> {
     /// dropped — common when a long-lived ViewModel keeps emitting after
     /// the view has been torn down.
     ///
-    /// Writes from a background thread are dispatched to `DispatchQueue.main`
-    /// so callers don't have to remember to hop themselves.
-    ///
     /// - Parameters:
     ///   - object: The UI object to write into. Captured weakly.
-    ///   - binding: Closure invoked on the main thread with the most recent
+    ///   - binding: Closure invoked on the main actor with the most recent
     ///     value and a strong reference to `object`.
     public init<Object: AnyObject>(
         _ object: Object,
@@ -81,11 +85,7 @@ public struct Binder<Value> {
     ) {
         _binding = { [weak object] value in
             guard let object else { return }
-            if Thread.isMainThread {
-                binding(object, value)
-            } else {
-                DispatchQueue.main.async { binding(object, value) }
-            }
+            binding(object, value)
         }
     }
 

@@ -2,46 +2,52 @@
 
 import Foundation
 
-/// Abstracts over delayed dispatch so callers can be tested without real-time
-/// waits.
+/// Abstracts over delayed dispatch on the main actor so callers can be tested
+/// without real-time waits.
 ///
-/// Production code uses ``MainQueueClock``, which schedules work with a real
-/// `DispatchQueue.main.asyncAfter` delay. Tests register an immediate-clock
-/// double that ignores the delay and fires on the next main-queue cycle —
-/// making timer-dependent tests run in milliseconds instead of seconds.
+/// Production code uses ``MainQueueClock``, which schedules work via
+/// `Task { @MainActor in try? await Task.sleep(...); block() }`. Tests register
+/// an immediate-clock double that ignores the delay and fires synchronously,
+/// making timer-dependent tests run in milliseconds.
 ///
 /// `Clock` is the *delayed* sibling of ``MainScheduler``: `MainScheduler`
-/// controls immediate hops to the main thread, `Clock` controls delayed
+/// controls immediate hops to the main actor, `Clock` controls delayed
 /// dispatch. Together they cover every place where the package would
 /// otherwise need to call `DispatchQueue.main.async` or `.asyncAfter`
 /// directly.
 ///
 /// The package itself uses `Clock` only inside ``Toast/present(using:clock:dismissedCompletion:)``,
 /// where the auto-dismiss path delays the dismissal by `duration` seconds.
-/// Consumers can use it for any delayed work that needs to be testable.
+/// Consumers can use it for any main-actor work that needs to be testable.
+///
+/// `@MainActor` because the protocol's `block` parameter is implicitly
+/// `@MainActor`, which matches every observed use-site (UI dismissals,
+/// label updates, etc.). No `@Sendable` ceremony is needed because the
+/// closure never crosses an actor boundary.
 ///
 /// ## Example — testable timed banner
 ///
 /// ```swift
 /// import NanoViewControllerDIPrimitives
 ///
+/// @MainActor
 /// final class TimedBannerViewModel {
 ///     private let clock: any Clock
-///     private var work: DispatchWorkItem?
+///     private var pending: Task<Void, Never>?
 ///
 ///     init(clock: any Clock) { self.clock = clock }
 ///
 ///     /// Show the banner; auto-hide after `duration` seconds.
 ///     func show(message: String, duration: TimeInterval) {
 ///         display(message)
-///         work?.cancel()
-///         work = clock.schedule(after: duration) { [weak self] in self?.hide() }
+///         pending?.cancel()
+///         pending = clock.schedule(after: duration) { [weak self] in self?.hide() }
 ///     }
 ///
 ///     /// Cancel the auto-hide if the user dismisses early.
 ///     func dismissNow() {
-///         work?.cancel()
-///         work = nil
+///         pending?.cancel()
+///         pending = nil
 ///         hide()
 ///     }
 ///
@@ -50,35 +56,35 @@ import Foundation
 /// }
 ///
 /// // Test:
+/// @MainActor
 /// final class ImmediateClock: Clock {
 ///     @discardableResult
-///     func schedule(after _: TimeInterval, execute block: @escaping () -> Void) -> DispatchWorkItem {
-///         let item = DispatchWorkItem(block: block)
-///         block()                  // fire synchronously
-///         return item
+///     func schedule(after _: TimeInterval, execute block: @escaping () -> Void) -> Task<Void, Never> {
+///         block()                                    // fire synchronously
+///         return Task { /* no-op, already fired */ }
 ///     }
 /// }
 ///
 /// let vm = TimedBannerViewModel(clock: ImmediateClock())
 /// vm.show(message: "saved", duration: 5.0)
-/// // The hide() body has already run by this point — no XCTestExpectation,
-/// // no runloop pumping needed.
+/// // hide() has already run by this point — no XCTestExpectation needed.
 /// ```
+@MainActor
 public protocol Clock: AnyObject {
-    /// Schedules `block` to run on the main thread after `delay` seconds.
+    /// Schedules `block` to run on the main actor after `delay` seconds.
     ///
     /// - Parameters:
     ///   - delay: Time interval, in seconds, to wait before firing.
-    ///   - block: The work to perform on the main thread when the delay elapses.
-    /// - Returns: A `DispatchWorkItem` that can be cancelled before it fires.
+    ///   - block: The work to perform when the delay elapses.
+    /// - Returns: A `Task` that can be cancelled before it fires.
     @discardableResult
     func schedule(
         after delay: TimeInterval,
         execute block: @escaping () -> Void
-    ) -> DispatchWorkItem
+    ) -> Task<Void, Never>
 }
 
-/// Production ``Clock`` implementation backed by `DispatchQueue.main.asyncAfter`.
+/// Production ``Clock`` implementation backed by `Task` + `Task.sleep`.
 ///
 /// ## Example
 ///
@@ -86,27 +92,30 @@ public protocol Clock: AnyObject {
 /// let clock: any Clock = MainQueueClock()
 /// clock.schedule(after: 0.6) { print("fired after 600ms") }
 /// ```
+@MainActor
 public final class MainQueueClock: Clock {
     /// Trivial init — no dependencies.
     public init() {}
 
-    /// Schedules `block` on `DispatchQueue.main` after `delay` seconds.
+    /// Schedules `block` to run on the main actor after `delay` seconds.
     ///
-    /// Wraps the block in a `DispatchWorkItem` so the caller can cancel the
-    /// pending work — useful when the delay is interrupted by user action
-    /// (e.g. early manual dismiss of a toast).
+    /// Implemented via Swift Concurrency: a `@MainActor` `Task` sleeps for
+    /// `delay`, then fires `block` if it wasn't cancelled. Callers cancel by
+    /// calling `.cancel()` on the returned `Task`.
     ///
     /// - Parameters:
     ///   - delay: Seconds to wait before firing.
-    ///   - block: The work to perform on the main thread.
-    /// - Returns: The cancellable `DispatchWorkItem` that wraps `block`.
+    ///   - block: The work to perform on the main actor.
+    /// - Returns: The cancellable `Task` that wraps the delay + `block`.
     @discardableResult
     public func schedule(
         after delay: TimeInterval,
         execute block: @escaping () -> Void
-    ) -> DispatchWorkItem {
-        let item = DispatchWorkItem(block: block)
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
-        return item
+    ) -> Task<Void, Never> {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(delay))
+            guard !Task.isCancelled else { return }
+            block()
+        }
     }
 }

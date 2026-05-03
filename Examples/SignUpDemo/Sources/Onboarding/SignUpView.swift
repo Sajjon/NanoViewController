@@ -6,9 +6,10 @@ import NanoViewControllerController
 import NanoViewControllerCore
 import UIKit
 
-/// Plain UIKit form: a header label, two text fields (name + email), and a
-/// "Sign Up" button. The button's `isEnabled` is driven by the ViewModel via
-/// `populate(with:)`.
+/// Plain UIKit form: a header label, two text fields (name + email), a
+/// "Sign Up" button, and a spinner overlaid on the button. The button's
+/// `isEnabled` and the spinner's animating state are driven by the ViewModel
+/// via `populate(with:)`.
 public final class SignUpView: UIView {
     private lazy var headerLabel: UILabel = {
         let label = UILabel()
@@ -36,6 +37,15 @@ public final class SignUpView: UIView {
         // Disabled until both fields are non-empty (driven by the ViewModel).
         button.isEnabled = false
         return button
+    }()
+
+    /// Spinner overlaid on the submit button. White-on-blue for contrast on
+    /// the filled button background.
+    private lazy var spinner: UIActivityIndicatorView = {
+        let spinner = UIActivityIndicatorView(style: .medium)
+        spinner.color = .white
+        spinner.hidesWhenStopped = true
+        return spinner
     }()
 
     private lazy var stack: UIStackView = {
@@ -66,6 +76,16 @@ public final class SignUpView: UIView {
             stack.trailingAnchor.constraint(equalTo: safeAreaLayoutGuide.trailingAnchor, constant: -24),
             stack.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 48),
         ])
+
+        // Centre the spinner on the submit button so the title slides under
+        // it (UIButton.Configuration centres its own title; the spinner sits
+        // on top during the in-flight state).
+        submitButton.addSubview(spinner)
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: submitButton.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: submitButton.centerYAnchor),
+        ])
     }
 
     private func makeField(placeholder: String, contentType: UITextContentType) -> UITextField {
@@ -95,6 +115,8 @@ extension SignUpView: ViewModelled {
     }
 
     public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        [output.isSubmitEnabled --> submitButton.isEnabledBinder]
+        output.isSubmitEnabled --> submitButton.isEnabledBinder
+        output.loadingText --> submitButton.titleBinder(for: .normal)
+        output.isLoading --> spinner.isAnimatingBinder
     }
 }

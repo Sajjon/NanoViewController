@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.2
 //
 // NanoViewController — UIKit + Combine MVVM-C scaffolding extracted from
 // the Zhip wallet codebase.
@@ -17,12 +17,27 @@
 
 import PackageDescription
 
+// Compile every target in Swift 6 language mode. iOS 26's UIKit ships
+// with `UIView`, `UIViewController`, `UITableViewCell`, etc. annotated
+// `@MainActor`; the package's UI-bound surface is correspondingly
+// `@MainActor` (protocols, classes, `@MainActor`-isolated view-model
+// hierarchy, `Navigator`/`Coordinating`, the DI primitives that touch
+// UIKit). Value structs (`BarButtonContent`, `NavigationBarLayout`)
+// are plain `Sendable`. The only `@unchecked Sendable` left is
+// `UIControlSubscription` — Combine's `Subscription` protocol is
+// non-isolated, so a `@MainActor` class can't directly conform; the
+// `@unchecked` is documented in-source with the actual invariants.
+let swift6Mode: [SwiftSetting] = [
+    .swiftLanguageMode(.v6),
+]
+
 let package = Package(
     name: "NanoViewController",
-    // macOS 13 listed alongside iOS so `swift build` / `swift test` on a
-    // macOS host can exercise the Combine APIs. The actual consumer is
-    // iOS-only; the macOS minimum exists only for host-side runs.
-    platforms: [.iOS(.v17), .macOS(.v13)],
+    // iOS 26 minimum: the package's `@MainActor` annotations match
+    // iOS 26's UIKit isolation model. macOS 14 listed so `swift build` /
+    // `swift test` on a macOS host can exercise the Combine APIs; the
+    // actual consumer is iOS-only.
+    platforms: [.iOS(.v26), .macOS(.v14)],
     products: [
         .library(name: "NanoViewControllerCore", targets: ["NanoViewControllerCore"]),
         .library(name: "NanoViewControllerCombine", targets: ["NanoViewControllerCombine"]),
@@ -32,14 +47,19 @@ let package = Package(
         .library(name: "NanoViewControllerDIPrimitives", targets: ["NanoViewControllerDIPrimitives"]),
     ],
     targets: [
-        .target(name: "NanoViewControllerCore"),
+        .target(
+            name: "NanoViewControllerCore",
+            swiftSettings: swift6Mode
+        ),
         .target(
             name: "NanoViewControllerCombine",
-            dependencies: ["NanoViewControllerCore"]
+            dependencies: ["NanoViewControllerCore"],
+            swiftSettings: swift6Mode
         ),
         .target(
             name: "NanoViewControllerNavigation",
-            dependencies: ["NanoViewControllerCore"]
+            dependencies: ["NanoViewControllerCore"],
+            swiftSettings: swift6Mode
         ),
         .target(
             name: "NanoViewControllerController",
@@ -48,7 +68,8 @@ let package = Package(
                 "NanoViewControllerCombine",
                 "NanoViewControllerNavigation",
                 "NanoViewControllerDIPrimitives",
-            ]
+            ],
+            swiftSettings: swift6Mode
         ),
         .target(
             name: "NanoViewControllerSceneViews",
@@ -56,17 +77,28 @@ let package = Package(
                 "NanoViewControllerCore",
                 "NanoViewControllerCombine",
                 "NanoViewControllerController",
-            ]
+            ],
+            swiftSettings: swift6Mode
         ),
-        .target(name: "NanoViewControllerDIPrimitives"),
+        .target(
+            name: "NanoViewControllerDIPrimitives",
+            swiftSettings: swift6Mode
+        ),
 
         .testTarget(
             name: "NanoViewControllerCoreTests",
-            dependencies: ["NanoViewControllerCore"]
+            dependencies: ["NanoViewControllerCore"],
+            swiftSettings: swift6Mode
         ),
         .testTarget(
             name: "NanoViewControllerCombineTests",
-            dependencies: ["NanoViewControllerCombine"]
+            dependencies: ["NanoViewControllerCombine"],
+            swiftSettings: swift6Mode
+        ),
+        .testTarget(
+            name: "NanoViewControllerDIPrimitivesTests",
+            dependencies: ["NanoViewControllerDIPrimitives"],
+            swiftSettings: swift6Mode
         ),
     ]
 )

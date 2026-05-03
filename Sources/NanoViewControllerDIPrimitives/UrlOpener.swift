@@ -37,6 +37,7 @@ import UIKit
 /// XCTAssertEqual(opener.opened.first?.absoluteString,
 ///                "https://etherscan.io/tx/0xabc…")
 /// ```
+@MainActor
 public protocol UrlOpener: AnyObject {
     /// Hands `url` off to the system to open in the registered handler app.
     ///
@@ -45,6 +46,7 @@ public protocol UrlOpener: AnyObject {
 }
 
 /// Production implementation that forwards to `UIApplication.shared.open`.
+@MainActor
 public final class DefaultUrlOpener: UrlOpener {
     /// Trivial init — no dependencies.
     public init() {}

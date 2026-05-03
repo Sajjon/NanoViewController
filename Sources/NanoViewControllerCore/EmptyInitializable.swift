@@ -58,6 +58,10 @@ import Foundation
 /// // SceneController<WelcomeView> can now construct the view via
 /// // (WelcomeView.self as EmptyInitializable.Type).init().
 /// ```
+///
+/// `@MainActor` because every conformer in this package is a UIView subclass
+/// (which is `@MainActor` in the iOS 26 SDK).
+@MainActor
 public protocol EmptyInitializable {
     /// No-argument initialiser the harness uses to spin up an instance.
     ///

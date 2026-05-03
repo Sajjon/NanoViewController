@@ -88,6 +88,13 @@ import Foundation
 /// `populate(with:)` (see ``ViewModelled``). The coordinator subscribes to
 /// `viewModel.navigator.navigation` and routes `.signedUp(user)` to whatever
 /// transition makes sense (push the home screen, dismiss the modal, ...).
+///
+/// `@MainActor` because in this UIKit-based architecture every concrete
+/// ViewModel is constructed by, observed from, and torn down with a
+/// `SceneController` (a `UIViewController` subclass), all of which run on the
+/// main actor. Marking the protocol matches reality and removes the need to
+/// scatter `Sendable` annotations across the value-model layer.
+@MainActor
 public protocol ViewModelType {
     /// The combined user-action + controller-lifecycle input the ViewModel consumes.
     ///

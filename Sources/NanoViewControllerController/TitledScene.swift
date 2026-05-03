@@ -29,6 +29,7 @@ import Foundation
 ///     // no override — title remains ""
 /// }
 /// ```
+@MainActor
 public protocol TitledScene {
     /// The string to display in the navigation bar for this scene type.
     /// Defaults to the empty string (no title) via the protocol extension.

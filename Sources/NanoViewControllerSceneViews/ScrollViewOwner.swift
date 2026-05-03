@@ -24,6 +24,7 @@ import UIKit
 /// // Now any AbstractSceneView subclass gets `scrollToTop` for free:
 /// homeView.scrollToTop()
 /// ```
+@MainActor
 public protocol ScrollViewOwner {
     /// The owned scroll view — typically the one that hosts the scene's content.
     var scrollView: UIScrollView { get }

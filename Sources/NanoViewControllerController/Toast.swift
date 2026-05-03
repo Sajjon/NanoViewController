@@ -105,6 +105,7 @@ public extension Toast {
     ///   - clock: The ``Clock`` used to schedule auto-dismiss.
     ///   - dismissedCompletion: Optional callback invoked after dismissal —
     ///     overrides any `completion` supplied at toast construction time.
+    @MainActor
     func present(
         using navigationController: UIViewController,
         clock: any Clock,
@@ -120,13 +121,14 @@ public extension Toast {
             }
             alert.addAction(dismissAction)
         case let .after(duration):
+            // Both `Clock` and the closure are `@MainActor`, so capturing
+            // `alert` (UIAlertController) and `dismissedCompletion` (a plain
+            // non-Sendable closure) is fine — no actor crossing happens.
             clock.schedule(after: duration) {
                 alert.dismiss(animated: true, completion: dismissedCompletion)
             }
         }
 
-        DispatchQueue.main.async {
-            navigationController.present(alert, animated: true, completion: nil)
-        }
+        navigationController.present(alert, animated: true, completion: nil)
     }
 }

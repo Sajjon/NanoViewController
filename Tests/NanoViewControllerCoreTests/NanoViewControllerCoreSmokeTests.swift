@@ -8,6 +8,7 @@ import XCTest
 /// the helpers that have no UIKit/Combine dependency surface beyond what's
 /// already in Core. Richer tests migrate from the Zhip target in Phase 7.
 final class NanoViewControllerCoreSmokeTests: XCTestCase {
+    @MainActor
     func test_emptyInitializable_canSpinUpInstance() {
         struct Foo: EmptyInitializable {
             var marker = "spun"

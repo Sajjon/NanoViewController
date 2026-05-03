@@ -47,6 +47,7 @@ import UIKit
 /// XCTAssertEqual(mock.copies.count, 1)
 /// XCTAssertEqual(mock.copies[0].1, 30)        // expiration recorded
 /// ```
+@MainActor
 public protocol Pasteboard: AnyObject {
     /// Copy `string` to the system pasteboard.
     ///
@@ -71,6 +72,7 @@ public extension Pasteboard {
 }
 
 /// Production implementation that writes through to `UIPasteboard.general`.
+@MainActor
 public final class DefaultPasteboard: Pasteboard {
     /// Trivial init — no dependencies.
     public init() {}

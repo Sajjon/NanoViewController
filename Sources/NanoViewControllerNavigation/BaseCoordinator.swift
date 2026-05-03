@@ -68,7 +68,11 @@ import UIKit
 ///     }
 /// }
 /// ```
-open class BaseCoordinator<NavigationStep>: Coordinating, Navigating {
+///
+/// `@MainActor` to match `Coordinating` and `Navigating` — both are
+/// main-actor-isolated, so `BaseCoordinator` is too.
+@MainActor
+open class BaseCoordinator<NavigationStep: Sendable>: Coordinating, Navigating {
     /// Active sub-flows.
     ///
     /// Children are appended on `start(coordinator:...)` and removed in

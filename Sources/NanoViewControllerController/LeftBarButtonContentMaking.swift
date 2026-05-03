@@ -24,6 +24,7 @@ import UIKit
 /// // The user can now tap Cancel; the tap arrives at
 /// // editProfileVM.input.fromController.leftBarButtonTrigger.
 /// ```
+@MainActor
 public protocol LeftBarButtonContentMaking {
     /// The content to install as the left bar button on `viewDidLoad`.
     static var makeLeftContent: BarButtonContent { get }

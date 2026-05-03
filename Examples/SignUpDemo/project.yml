@@ -15,7 +15,7 @@ options:
   generateEmptyDirectories: false
   defaultConfig: Debug
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   groupSortPosition: top
 
 configs:
@@ -50,7 +50,7 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
         INFOPLIST_KEY_UIRequiresFullScreen: "YES"
         TARGETED_DEVICE_FAMILY: "1"   # iPhone only
-        SWIFT_VERSION: "5.9"
+        SWIFT_VERSION: "6.2"
     dependencies:
       - package: NanoViewController
         product: NanoViewControllerCore

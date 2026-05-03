@@ -43,6 +43,7 @@ import UIKit
 /// vm.copyAddress("0xabc…")
 /// XCTAssertEqual(haptics.calls, [.success])
 /// ```
+@MainActor
 public protocol HapticFeedback: AnyObject {
     /// Fires a system haptic pulse of the requested `type`.
     ///
@@ -51,6 +52,7 @@ public protocol HapticFeedback: AnyObject {
 }
 
 /// Production ``HapticFeedback`` backed by `UINotificationFeedbackGenerator`.
+@MainActor
 public final class DefaultHapticFeedback: HapticFeedback {
     private let generator = UINotificationFeedbackGenerator()
 

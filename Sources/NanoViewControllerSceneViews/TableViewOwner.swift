@@ -25,6 +25,7 @@ import Foundation
 ///     // …
 /// }
 /// ```
+@MainActor
 public protocol TableViewOwner {
     /// Section header model type — passed through to the diffable data source.
     associatedtype Header

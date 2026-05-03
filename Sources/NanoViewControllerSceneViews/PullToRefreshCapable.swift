@@ -31,4 +31,5 @@ import Foundation
 ///     }
 /// }
 /// ```
+@MainActor
 public protocol PullToRefreshCapable {}

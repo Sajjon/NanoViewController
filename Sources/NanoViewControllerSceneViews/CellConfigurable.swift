@@ -44,6 +44,7 @@ import UIKit
 ///     ]),
 /// ])
 /// ```
+@MainActor
 public protocol CellConfigurable {
     /// The model type this cell knows how to render.
     associatedtype Model

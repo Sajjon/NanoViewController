@@ -13,6 +13,7 @@ import UIKit
 ///
 /// Views that want the `UITableView.itemSelectedPublisher` helper (defined below) must conform
 /// to this — that property forwards to the subclass-supplied publisher.
+@MainActor
 public protocol SelectionPublishing: AnyObject {
     /// Emits each `IndexPath` selected by the user.
     var selectionPublisher: AnyPublisher<IndexPath, Never> { get }

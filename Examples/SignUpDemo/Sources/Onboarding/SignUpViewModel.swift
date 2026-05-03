@@ -4,10 +4,11 @@ import Combine
 import Foundation
 import NanoViewControllerCombine
 import NanoViewControllerController
+import NanoViewControllerCore
 
 /// User outcomes the SignUp scene can emit. The coordinator subscribes and
 /// decides what happens next (here: `signedUp(_:)` advances to Home).
-public enum SignUpUserAction {
+public enum SignUpUserAction: Sendable {
     case signedUp(SignedUpUser)
 }
 
@@ -27,9 +28,11 @@ public final class SignUpViewModel: BaseViewModel<
     }
 
     override public func transform(input: Input) -> Output {
-        // Name + email both non-empty → button enabled. Real apps would do
-        // proper validation; for a demo this is enough to exercise the
-        // reactive enable/disable plumbing.
+        // Track the in-flight state of the sign-up call so the view can show
+        // a spinner and disable the submit button while waiting.
+        let activity = ActivityIndicator()
+
+        // Name + email both non-empty → form is valid.
         let isFormValid: AnyPublisher<Bool, Never> = input.fromView.name
             .combineLatest(input.fromView.email)
             .map { name, email in
@@ -38,19 +41,39 @@ public final class SignUpViewModel: BaseViewModel<
             }
             .eraseToAnyPublisher()
 
-        // On submit-tap: snapshot the latest (name, email), call the service,
-        // forward the resulting user as `.signedUp` to the coordinator.
+        let isLoading = activity.asPublisher()
+
+        // Submit is enabled only when the form is valid AND we're not already
+        // mid-request (prevents double-taps from firing two sign-ups).
+        let isSubmitEnabled = isFormValid
+            .combineLatest(isLoading)
+            .map { valid, loading in valid && !loading }
+            .eraseToAnyPublisher()
+
+        // On submit-tap: snapshot the latest (name, email), call the service
+        // (tracking activity), forward the resulting user as `.signedUp`.
         input.fromView.submitTrigger
             .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
-            .flatMapLatest { [service] name, email in
+            .map { [service] name, email in
                 service.signUp(name: name, email: email)
+                    .trackActivity(activity)
             }
+            .switchToLatest()
             .sink { [weak self] user in
                 self?.navigator.next(.signedUp(user))
             }
             .store(in: &cancellables)
 
-        return Output(isSubmitEnabled: isFormValid)
+        return Output(
+            isSubmitEnabled: isSubmitEnabled,
+            isLoading: isLoading
+        )
+    }
+}
+
+public extension SignUpViewModel.Output {
+    var loadingText: AnyPublisher<String, Never> {
+        isLoading.map { $0 ? "" : "Sign Up" }.eraseToAnyPublisher()
     }
 }
 
@@ -74,7 +97,12 @@ public extension SignUpViewModel {
 
     /// Reactive bindings the view installs.
     struct Output {
-        /// Drives the Sign Up button's `isEnabled`.
+        /// Drives the Sign Up button's `isEnabled` (`isFormValid && !isLoading`).
         public let isSubmitEnabled: AnyPublisher<Bool, Never>
+
+        /// `true` while the sign-up service call is in flight. The view
+        /// reflects this on a `UIActivityIndicatorView` overlaid on the
+        /// submit button.
+        public let isLoading: AnyPublisher<Bool, Never>
     }
 }

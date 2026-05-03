@@ -34,6 +34,7 @@ import UIKit
 ///     }
 /// }
 /// ```
+@MainActor
 public protocol NavigationBarLayoutOwner {
     /// The styling the controller wants applied while it's on screen.
     var navigationBarLayout: NavigationBarLayout { get }
@@ -130,7 +131,7 @@ public extension UINavigationBar {
 ///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
 /// }
 /// ```
-public struct NavigationBarLayout: Equatable {
+public struct NavigationBarLayout: Equatable, Sendable {
     /// Field-by-field equality (`UIImage` and dictionary equality are not
     /// auto-synthesized — Swift can't compare `UIImage` for value equality).
     public static func == (lhs: NavigationBarLayout, rhs: NavigationBarLayout) -> Bool {
@@ -214,7 +215,7 @@ public struct NavigationBarLayout: Equatable {
 public extension NavigationBarLayout {
     /// Whether the navigation bar is visible, plus whether the visibility
     /// transition itself should be animated.
-    enum Visibility: Equatable {
+    enum Visibility: Equatable, Sendable {
         /// Bar should be hidden; `animated` controls the show/hide transition.
         case hidden(animated: Bool)
         /// Bar should be visible; `animated` controls the show/hide transition.

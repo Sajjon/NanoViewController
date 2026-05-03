@@ -56,6 +56,7 @@ import Foundation
 /// trackers on background queues can't interleave start/stop calls and leave
 /// the indicator stuck in a wrong state. The published values are always
 /// delivered serially through the locked subject.
+///
 public final class ActivityIndicator {
     /// Serializes writes to ``subject`` so concurrent trackers can't interleave
     /// start/stop calls and leave the indicator stuck in a wrong state. Recursive

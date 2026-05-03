@@ -64,6 +64,7 @@ import Foundation
 /// Combine's `replaceError` family already turns a failing publisher into a
 /// `Never`-failing one; `ErrorTracker` is what you reach for when several
 /// chains need to share one error sink.
+///
 public final class ErrorTracker {
     /// Internal subject that captured errors are pushed into.
     ///

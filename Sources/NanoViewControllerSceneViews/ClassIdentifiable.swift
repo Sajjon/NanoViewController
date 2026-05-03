@@ -41,6 +41,7 @@ public protocol ClassIdentifiable: NSObjectProtocol {
 /// tableView.register(HomeRowCell.self, forCellReuseIdentifier: HomeRowCell.identifier)
 /// let cell = tableView.dequeueReusableCell(withIdentifier: HomeRowCell.identifier, for: indexPath)
 /// ```
+@MainActor
 public protocol ReuseIdentifiable {
     /// Stable string identifier used as the UIKit cell-reuse identifier.
     static var identifier: String { get }

@@ -2,9 +2,10 @@
 
 import Combine
 import NanoViewControllerController
+import NanoViewControllerCore
 
 /// User outcomes the Home scene can emit.
-public enum HomeUserAction {
+public enum HomeUserAction: Sendable {
     case logout
 }
 

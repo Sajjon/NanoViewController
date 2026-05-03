@@ -43,43 +43,57 @@ import Foundation
 /// vm.addToCart(item) { done = true }
 /// XCTAssertTrue(done)        // ImmediateMainScheduler ran synchronously.
 /// ```
+///
+/// `@MainActor` because the protocol's `work` parameter is implicitly
+/// `@MainActor`, matching every observed use-site. No `@Sendable` ceremony
+/// is needed because the closure stays on the main actor end-to-end.
+@MainActor
 public protocol MainScheduler: AnyObject {
-    /// Schedules `work` to run on the main thread.
+    /// Schedules `work` to run on the main actor.
     ///
     /// Implementations may run synchronously (test fakes) or asynchronously
     /// (production), so callers must not assume `work` has finished by the
     /// time `schedule` returns.
     ///
-    /// - Parameter work: Block to execute on the main thread.
+    /// - Parameter work: Block to execute on the main actor.
     func schedule(_ work: @escaping () -> Void)
 }
 
-/// Production ``MainScheduler`` backed by `DispatchQueue.main.async`.
+/// Production ``MainScheduler`` backed by a `@MainActor` `Task`.
+@MainActor
 public final class DispatchMainScheduler: MainScheduler {
     /// Trivial init — no dependencies.
     public init() {}
 
-    /// Hops `work` to the main queue via `async`.
+    /// Hops `work` onto a fresh `@MainActor` `Task`, which Swift Concurrency
+    /// schedules on the next main-actor cycle.
     public func schedule(_ work: @escaping () -> Void) {
-        DispatchQueue.main.async(execute: work)
+        Task { @MainActor in work() }
     }
 }
 
-/// Test ``MainScheduler`` that invokes work synchronously on the calling
-/// thread.
+/// Test ``MainScheduler`` that invokes work synchronously on the main actor.
 ///
-/// Lets navigation hops resolve before the test's next assertion. **Do not**
-/// use in production — synchronous delivery on a non-main thread will violate
-/// UIKit's main-thread requirement.
+/// `MainScheduler` (and therefore this conformer) is `@MainActor`, so
+/// `schedule(_:)` is callable only from a main-actor context — typically a
+/// `@MainActor`-annotated `XCTestCase` method. From there the call resolves
+/// without any actor hop, letting tests drive navigation pulses synchronously
+/// and assert on side effects on the next line, without pumping a runloop.
 ///
 /// ## Example
 ///
 /// ```swift
-/// var calls = 0
-/// let scheduler = ImmediateMainScheduler()
-/// scheduler.schedule { calls += 1 }
-/// XCTAssertEqual(calls, 1)        // already incremented; no runloop pump needed
+/// @MainActor
+/// final class CartViewModelTests: XCTestCase {
+///     func test_addToCart_invokesCompletion() {
+///         var calls = 0
+///         let scheduler = ImmediateMainScheduler()
+///         scheduler.schedule { calls += 1 }
+///         XCTAssertEqual(calls, 1)        // already incremented; no runloop pump
+///     }
+/// }
 /// ```
+@MainActor
 public final class ImmediateMainScheduler: MainScheduler {
     /// Trivial init — no dependencies.
     public init() {}
