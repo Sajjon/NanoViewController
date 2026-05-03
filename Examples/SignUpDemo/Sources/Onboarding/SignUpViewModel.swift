@@ -8,7 +8,7 @@ import NanoViewControllerCore
 
 /// User outcomes the SignUp scene can emit. The coordinator subscribes and
 /// decides what happens next (here: `signedUp(_:)` advances to Home).
-public enum SignUpUserAction {
+public enum SignUpUserAction: Sendable {
     case signedUp(SignedUpUser)
 }
 

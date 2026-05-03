@@ -5,7 +5,7 @@ import NanoViewControllerNavigation
 import UIKit
 
 /// Outcome the onboarding flow reports up to its parent (`AppCoordinator`).
-public enum OnboardingNavigationStep {
+public enum OnboardingNavigationStep: Sendable {
     case finishedOnboarding(SignedUpUser)
 }
 

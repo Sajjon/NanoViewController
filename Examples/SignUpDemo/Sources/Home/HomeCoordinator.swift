@@ -5,7 +5,7 @@ import NanoViewControllerNavigation
 import UIKit
 
 /// Outcome the home flow reports up to its parent (`AppCoordinator`).
-public enum HomeNavigationStep {
+public enum HomeNavigationStep: Sendable {
     case loggedOut
 }
 
