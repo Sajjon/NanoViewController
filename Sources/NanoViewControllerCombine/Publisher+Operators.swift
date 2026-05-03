@@ -8,23 +8,34 @@ import UIKit
 public extension Publisher where Failure == Never {
     /// Subscribes and dispatches each value to a `@MainActor` closure.
     ///
-    /// In production the default `DispatchQueue.main.async` closure makes this
-    /// equivalent to `.receive(on: DispatchQueue.main).sink { ... }`. Tests can
-    /// pass `{ $0() }` to deliver values synchronously, which lets coordinator
-    /// tests assert on side effects without pumping the runloop.
-    ///
-    /// (Previously this used `Container.shared.mainScheduler()` to resolve a
-    /// scheduler from the consumer's DI container. The closure form drops the
-    /// dependency on Factory entirely so the package stays DI-agnostic.)
+    /// In production the default `DispatchQueue.main.async` schedule makes
+    /// this equivalent to `.receive(on: DispatchQueue.main).sink { … }`.
+    /// Tests can pass `{ $0() }` to deliver values synchronously, which lets
+    /// coordinator tests assert on side effects without pumping the runloop.
     ///
     /// `receiveValue` is `@MainActor` because the call sites (coordinator
-    /// navigation handlers, populate bindings) all touch UIKit. The schedule
-    /// closure runs first on whatever thread the upstream sinks on, then hops
-    /// to main via `MainActor.assumeIsolated`.
+    /// navigation handlers, `populate(with:)` bindings) all touch UIKit.
+    /// `MainActor.assumeIsolated` re-establishes the actor isolation after
+    /// the schedule closure has run on whatever thread the upstream sinks on.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// viewModel.navigator.navigation
+    ///     .sinkOnMain { [weak self] step in self?.handle(step) }
+    ///     .store(in: &cancellables)
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - schedule: Closure that decides how to dispatch the receive callback.
+    ///     Defaults to `DispatchQueue.main.async`.
+    ///   - receiveValue: The handler invoked for each received value, on the
+    ///     main actor.
+    /// - Returns: The cancellable subscription.
     func sinkOnMain(
         schedule: @escaping @Sendable (@escaping @Sendable () -> Void)
             -> Void = { DispatchQueue.main.async(execute: $0) },
-        _ receiveValue: @escaping @Sendable @MainActor (Output) -> Void
+        _ receiveValue: @escaping @MainActor (Output) -> Void
     ) -> AnyCancellable where Output: Sendable {
         sink { value in
             schedule {
@@ -36,30 +47,20 @@ public extension Publisher where Failure == Never {
 
 // MARK: - --> binding operator
 
+/// Binding operator. Reads as "the publisher on the left flows into the
+/// binder on the right".
+///
+/// All overloads accept `some Publisher<…, Never>` (rather than the concrete
+/// `AnyPublisher`), so chained expressions like `.map`/`.combineLatest`/
+/// `.removeDuplicates` drop straight in without an explicit
+/// `.eraseToAnyPublisher()`.
+///
+/// All overloads are `@MainActor` because `Binder` is `@MainActor` and the
+/// UIKit targets (UILabel, UITextView) are `@MainActor` in iOS 26. The
+/// canonical call site is `populate(with:)`, which is itself `@MainActor`.
 infix operator -->
 
-// Each `-->` overload accepts `some Publisher<…, Never>` rather than the
-// concrete `AnyPublisher<…, Never>` so call sites can drop a chained
-// expression (`.map`, `.combineLatest`, `.removeDuplicates`, …) straight
-// into the binder without an explicit `.eraseToAnyPublisher()`.
-//
-// All overloads are `@MainActor` because the right-hand side is always a
-// `Binder` (`@MainActor`) or a UIKit object (`@MainActor` in the iOS 26 SDK).
-// `populate(with:)` — the canonical call site — is `@MainActor` already, so
-// this isolation matches reality.
-
-/// Binds a `Never`-failing publisher to a `Binder` — the write-only,
-/// main-thread sink primitive used throughout `populate(with:)` implementations.
-///
-/// ## Example
-///
-/// ```swift
-/// // Pre-erased publisher.
-/// output.isEnabled --> button.isEnabledBinder
-///
-/// // Inline chain — no .eraseToAnyPublisher() needed.
-/// output.isLoading.map { !$0 } --> formStack.isVisibleBinder
-/// ```
+/// Binds a `Never`-failing publisher to a ``Binder``.
 @MainActor
 @discardableResult
 public func --> <T: Sendable>(publisher: some Publisher<T, Never>, binder: Binder<T>) -> AnyCancellable {

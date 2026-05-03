@@ -2,16 +2,38 @@
 
 import UIKit
 
-/// Conformance signals that a `UIViewController` (typically a `SceneController`)
-/// wants its hosting navigation bar styled according to a particular `NavigationBarLayout`.
+/// Conformance signals that a `UIViewController` (typically a
+/// ``SceneController``) wants its hosting navigation bar styled according to
+/// a particular ``NavigationBarLayout``.
 ///
-/// `NavigationBarLayoutingNavigationController.viewWillAppear` checks for this
-/// conformance and pushes the layout onto its `navigationBar` — so per-screen
-/// styling (e.g. translucent vs opaque, hidden bar) lives on the controller
-/// instance instead of in shared appearance proxies.
+/// ``NavigationBarLayoutingNavigationController/viewWillAppear(_:)`` checks
+/// for this conformance and pushes the layout onto its `navigationBar` — so
+/// per-screen styling (e.g. translucent vs opaque, hidden bar) lives on the
+/// controller instance instead of in shared appearance proxies.
 ///
-/// `@MainActor` because conformers are `UIViewController` subclasses
-/// (`@MainActor` in the iOS 26 SDK).
+/// ## Example
+///
+/// ```swift
+/// final class WelcomeScene: Scene<WelcomeView>, NavigationBarLayoutOwner {
+///     static var title: String { "" }
+///
+///     // Hide the nav bar entirely on the welcome screen.
+///     var navigationBarLayout: NavigationBarLayout {
+///         NavigationBarLayout(
+///             barStyle:        .default,
+///             visibility:      .hidden(animated: false),
+///             isTranslucent:   true,
+///             barTintColor:    .clear,
+///             tintColor:       .label,
+///             backgroundColor: .clear,
+///             backgroundImage: UIImage(),
+///             shadowImage:     UIImage(),
+///             titleFont:       .preferredFont(forTextStyle: .headline),
+///             titleColor:      .label
+///         )
+///     }
+/// }
+/// ```
 @MainActor
 public protocol NavigationBarLayoutOwner {
     /// The styling the controller wants applied while it's on screen.
@@ -19,12 +41,19 @@ public protocol NavigationBarLayoutOwner {
 }
 
 public extension UINavigationBar {
-    /// Mutates this navigation bar to match `layout`. Used by
-    /// `NavigationBarLayoutingNavigationController` during view-will-appear so
-    /// each scene can stamp its own bar styling.
+    /// Mutates this navigation bar to match `layout`.
     ///
-    /// Returns the same `layout` to make chaining easy at call sites that want
-    /// to remember what they applied.
+    /// Used by ``NavigationBarLayoutingNavigationController`` during
+    /// view-will-appear so each scene can stamp its own bar styling. Stamps
+    /// the resulting `UINavigationBarAppearance` into all four metrics
+    /// (standard, scroll-edge, compact, compact-scroll-edge) so the bar looks
+    /// consistent across orientation/scroll states.
+    ///
+    /// Returns the same `layout` to make chaining easy at call sites that
+    /// want to remember what they applied.
+    ///
+    /// - Parameter layout: The styling to apply.
+    /// - Returns: The `layout` argument unchanged.
     @discardableResult
     func applyLayout(_ layout: NavigationBarLayout) -> NavigationBarLayout {
         barStyle = layout.barStyle
@@ -56,19 +85,55 @@ public extension UINavigationBar {
     }
 }
 
-/// Per-screen navigation-bar styling. Applied in `applyLayout(_:)` above and
-/// produced via consumer factories (e.g. Zhip declares `.opaque` /
-/// `.translucent(...)` / `.hidden` on top of this struct).
+/// Per-screen navigation-bar styling.
 ///
-/// All fields are required at construction. The package ships no
-/// brand-default values — consumers like Zhip layer their own factories on
-/// top via `extension NavigationBarLayout { static var opaque: ... }`.
+/// Applied in the `UINavigationBar.applyLayout(_:)` extension above and produced via
+/// consumer factories — the package ships no brand-default values, leaving
+/// it to consumers (Zhip, the SignUpDemo example) to declare static factories
+/// like `.opaque` / `.translucent(...)` / `.hidden` on top.
 ///
-/// `Sendable`: every field is a value of a Sendable UIKit type (`UIColor`,
-/// `UIFont`, `UIImage`, `UIBarStyle`) so the struct can flow across actor
-/// boundaries safely.
+/// All fields are required at construction so a brand factory can't
+/// accidentally forget to set one.
+///
+/// ## Example — declaring brand factories on top of the struct
+///
+/// ```swift
+/// extension NavigationBarLayout {
+///     static func opaque(brand: BrandPalette) -> NavigationBarLayout {
+///         NavigationBarLayout(
+///             barStyle:        .default,
+///             visibility:      .visible(animated: false),
+///             isTranslucent:   false,
+///             barTintColor:    brand.surface,
+///             tintColor:       brand.accent,
+///             backgroundColor: brand.surface,
+///             backgroundImage: UIImage(),
+///             shadowImage:     UIImage(),
+///             titleFont:       brand.headlineFont,
+///             titleColor:      brand.onSurface
+///         )
+///     }
+///
+///     static var hidden: NavigationBarLayout {
+///         NavigationBarLayout(
+///             barStyle:      .default,
+///             visibility:    .hidden(animated: false),
+///             isTranslucent: true,
+///             barTintColor:    .clear, tintColor: .label,
+///             backgroundColor: .clear, backgroundImage: UIImage(), shadowImage: UIImage(),
+///             titleFont: .systemFont(ofSize: 17), titleColor: .label
+///         )
+///     }
+/// }
+///
+/// // Consumer screen:
+/// final class HomeScene: Scene<HomeView>, NavigationBarLayoutOwner {
+///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
+/// }
+/// ```
 public struct NavigationBarLayout: Equatable, Sendable {
-    /// Field-by-field equality (`UIImage` and dictionary equality not auto-synthesized).
+    /// Field-by-field equality (`UIImage` and dictionary equality are not
+    /// auto-synthesized — Swift can't compare `UIImage` for value equality).
     public static func == (lhs: NavigationBarLayout, rhs: NavigationBarLayout) -> Bool {
         lhs.visibility == rhs.visibility &&
             lhs.isTranslucent == rhs.isTranslucent &&
@@ -81,37 +146,47 @@ public struct NavigationBarLayout: Equatable, Sendable {
             lhs.titleColor == rhs.titleColor
     }
 
-    /// Light vs dark bar style — controls the status bar foreground color.
+    /// Light vs dark bar style — controls the status bar foreground colour.
     public let barStyle: UIBarStyle
+
     /// Whether the bar is hidden or visible (and whether the transition animates).
     public let visibility: Visibility
-    /// Whether the bar background is translucent (allows content to bleed through).
+
+    /// Whether the bar background is translucent (allows content to bleed
+    /// through).
     public let isTranslucent: Bool
 
     /// Tint applied to bar-button items and back chevron.
     public let tintColor: UIColor
-    /// Bar background color in opaque mode.
+
+    /// Bar background colour in opaque mode.
     public let barTintColor: UIColor
-    /// Background color (only honored when `isTranslucent == true`).
+
+    /// Background colour (only honored when `isTranslucent == true`).
     public let backgroundColor: UIColor
 
     /// Background image (use empty `UIImage()` to clear).
     public let backgroundImage: UIImage
+
     /// 1pt shadow image under the bar (use empty `UIImage()` to clear).
     public let shadowImage: UIImage
 
     /// Title text font.
     public let titleFont: UIFont
-    /// Title text color.
+
+    /// Title text colour.
     public let titleColor: UIColor
 
-    /// Convenience: the flattened `[font, color]` form expected by `UINavigationBarAppearance`.
+    /// Convenience: the flattened `[font, color]` form expected by
+    /// `UINavigationBarAppearance.titleTextAttributes`.
     public var titleTextAttributes: [NSAttributedString.Key: Any] {
         [.font: titleFont, .foregroundColor: titleColor]
     }
 
-    /// Memberwise init. Every field is required — consumers layer their own
-    /// brand-default factories on top of this struct.
+    /// Memberwise init.
+    ///
+    /// Every field is required — consumers layer their own brand-default
+    /// factories on top of this struct.
     public init(
         barStyle: UIBarStyle,
         visibility: Visibility,
@@ -145,6 +220,7 @@ public extension NavigationBarLayout {
         case hidden(animated: Bool)
         /// Bar should be visible; `animated` controls the show/hide transition.
         case visible(animated: Bool)
+
         /// `true` for the `.hidden` case, `false` otherwise.
         public var isHidden: Bool {
             switch self {

@@ -4,10 +4,34 @@ import NanoViewControllerCore
 import UIKit
 
 public extension AbstractController {
-    /// Installs `barButtonContent` as the navigation item's *right* bar button,
-    /// wiring its tap to the controller's `rightBarButtonAbstractTarget` (which in
-    /// turn pushes to `rightBarButtonSubject`, exposed to the ViewModel as
-    /// `InputFromController.rightBarButtonTrigger`).
+    /// Installs `barButtonContent` as the navigation item's *right* bar
+    /// button, wiring its tap to the controller's
+    /// ``rightBarButtonAbstractTarget`` (which in turn pushes to
+    /// ``rightBarButtonSubject``, exposed to the ViewModel as
+    /// ``InputFromController/rightBarButtonTrigger``).
+    ///
+    /// Use directly when imperatively setting a bar button (rare). Most
+    /// scenes either:
+    ///
+    ///   * conform to ``RightBarButtonContentMaking`` — a static one-shot
+    ///     installation in `viewDidLoad`, or
+    ///   * push to ``InputFromController/rightBarButtonContentSubject`` — for
+    ///     dynamic content that changes over time (e.g. enable/disable based
+    ///     on form validity).
+    ///
+    /// ## Example — imperative use from a custom subclass
+    ///
+    /// ```swift
+    /// final class CustomScene: SceneController<MyView>, TitledScene {
+    ///     static var title: String { "Custom" }
+    ///     override func viewDidLoad() {
+    ///         super.viewDidLoad()
+    ///         setRightBarButtonUsing(content: BarButtonContent(system: .add))
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Parameter barButtonContent: The content (text/image/system) to install.
     func setRightBarButtonUsing(content barButtonContent: BarButtonContent) {
         let item = barButtonContent.makeBarButtonItem(
             target: rightBarButtonAbstractTarget,
@@ -16,8 +40,10 @@ public extension AbstractController {
         navigationItem.rightBarButtonItem = item
     }
 
-    /// Mirror of `setRightBarButtonUsing(content:)` for the *left* bar button.
-    /// See that method's documentation for the wiring chain.
+    /// Mirror of ``setRightBarButtonUsing(content:)`` for the *left* bar
+    /// button. See that method's documentation for the wiring chain.
+    ///
+    /// - Parameter barButtonContent: The content (text/image/system) to install.
     func setLeftBarButtonUsing(content barButtonContent: BarButtonContent) {
         let item = barButtonContent.makeBarButtonItem(
             target: leftBarButtonAbstractTarget,

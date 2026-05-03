@@ -5,42 +5,93 @@ import NanoViewControllerCore
 import NanoViewControllerDIPrimitives
 import UIKit
 
-/// The "Single-Line Controller" base class.
+/// The "Single-Line Controller" base class — generic scene glue that hosts
+/// any `(UIView, ViewModelled)` pair without per-scene controller code.
 ///
-/// `SceneController<View>` is the generic scene glue: given a `ViewModelled` view
-/// type and its associated ViewModel, it instantiates the view, builds an
-/// `InputFromController`, invokes `viewModel.transform(input:)`, and binds the
-/// output back to the view via `View.populate(with:)`. It is almost never
-/// subclassed — coordinators push instances of this class directly using the
-/// `Scene` typealias.
+/// `SceneController<View>`:
+///
+///   1. Instantiates `View` empty via ``EmptyInitializable``.
+///   2. Builds an ``InputFromController`` from its own lifecycle, bar-button
+///      and write-back subjects.
+///   3. Stitches the View's ``ViewModelled/inputFromView`` together with that
+///      controller-side input and calls ``ViewModelType/transform(input:)``
+///      on the ViewModel.
+///   4. Binds the resulting `OutputVM` back into the View via
+///      ``ViewModelled/populate(with:)``.
+///
+/// This is the load-bearing class of the package — coordinators push instances
+/// of `SceneController<…>` directly through the ``Scene`` typealias, and you
+/// almost never need to subclass it. The whole point is that *one line of
+/// code* per screen ("push this scene with this view-model") is enough.
+///
+/// ## Example — coordinator pushing a scene
+///
+/// ```swift
+/// final class OnboardingCoordinator: BaseCoordinator<Never> {
+///     override func start(didStart: Completion? = nil) {
+///         let vm = WelcomeViewModel(api: api)
+///         push(scene: WelcomeScene.self, viewModel: vm) { [weak self] step in
+///             // route step → next scene
+///         }
+///     }
+/// }
+/// ```
+///
+/// `WelcomeScene` is just a `Scene<WelcomeView>` typealias — there is *no*
+/// hand-written controller class for the welcome screen. `SceneController`
+/// is doing all the work generically.
+///
+/// ## Subclassing — when (rarely) needed
+///
+/// Override one of the open hooks if you need to:
+///
+///   * change ``rootBackgroundColor`` — your app's brand background,
+///   * substitute a test ``clock`` for synchronous toast auto-dismiss,
+///   * conform to ``NavigationBarLayoutOwner`` to pin a per-scene nav-bar
+///     layout (translucent / opaque / hidden).
+///
+/// ```swift
+/// final class BrandedWelcomeScene: SceneController<WelcomeView>, TitledScene, NavigationBarLayoutOwner {
+///     static var title: String { "Welcome" }
+///     override var rootBackgroundColor: UIColor { .brandBackground }
+///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
+/// }
+/// ```
 open class SceneController<View: ContentView>: AbstractController
     where View.ViewModel.Input.FromController == InputFromController
 {
     /// Convenience alias for the view's ViewModel type.
     public typealias ViewModel = View.ViewModel
 
-    /// Bag of Combine subscriptions owned by this controller (navigation bar bindings,
-    /// toasts, title updates, view ↔ view-model bindings).
+    /// Bag of Combine subscriptions owned by this controller (navigation-bar
+    /// bindings, toasts, title updates, view ↔ view-model bindings).
+    /// Survives for the lifetime of the controller.
     private var cancellables = Set<AnyCancellable>()
 
     /// The ViewModel injected by the coordinator at construction time.
     public let viewModel: ViewModel
 
-    /// Clock used to auto-dismiss toasts emitted via `InputFromController.toastSubject`.
-    /// Defaults to a real `MainQueueClock`. Subclasses (or test fakes) override
-    /// to substitute an immediate clock so toast auto-dismiss skips the runloop.
+    /// Clock used to auto-dismiss toasts emitted via
+    /// ``InputFromController/toastSubject``.
+    ///
+    /// Defaults to a real ``MainQueueClock``. Subclasses (or test fakes)
+    /// override to substitute an immediate clock so toast auto-dismiss skips
+    /// the runloop in tests.
     open var clock: any Clock {
         MainQueueClock()
     }
 
-    /// Optional override-point: the colour the controller's `view.backgroundColor`
-    /// is set to in `viewDidLoad`. Defaults to `.systemBackground`. Subclasses
-    /// (or app-level extensions) override this to apply a brand background.
+    /// Optional override-point: the colour the controller's
+    /// `view.backgroundColor` is set to in `viewDidLoad`.
+    ///
+    /// Defaults to `.systemBackground`. Subclasses (or app-level extensions
+    /// on `SceneController`) override this to apply a brand background.
     open var rootBackgroundColor: UIColor {
         .systemBackground
     }
 
-    /// Fires when `viewDidLoad` runs. Piped into `InputFromController.viewDidLoad`.
+    /// Fires when `viewDidLoad` runs. Piped into
+    /// ``InputFromController/viewDidLoad``.
     private let viewDidLoadSubject = PassthroughSubject<Void, Never>()
 
     /// Fires each time `viewWillAppear` runs.
@@ -49,25 +100,33 @@ open class SceneController<View: ContentView>: AbstractController
     /// Fires each time `viewDidAppear` runs.
     private let viewDidAppearSubject = PassthroughSubject<Void, Never>()
 
-    /// Lazily-constructed root content view; the `force_cast` is safe because
-    /// `View: ContentView` and `ContentView: EmptyInitializable` by convention.
+    /// Lazily-constructed root content view.
+    ///
+    /// The `force_cast` is safe because `View: ContentView` and
+    /// `ContentView: EmptyInitializable` by convention. The cast goes through
+    /// the metatype rather than calling `View()` directly because `View` is a
+    /// generic constraint on a `UIView` subclass — Swift can't synthesise
+    /// `View()` without the explicit metatype dance.
     private lazy var rootContentView: View =
         // swiftlint:disable:next force_cast
         (View.self as EmptyInitializable.Type).init() as! View
 
     // MARK: - Initialization
 
-    /// Designated initializer. Coordinators call this with a freshly-constructed
-    /// ViewModel; `setup()` wires the bindings eagerly so the View has live
-    /// publishers before `viewDidLoad` runs.
+    /// Designated initializer.
+    ///
+    /// Coordinators call this with a freshly-constructed ViewModel. ``setup()``
+    /// runs eagerly so the View has live publishers before `viewDidLoad`.
+    ///
+    /// - Parameter viewModel: The ViewModel for this scene. Owned by the controller.
     public required init(viewModel: ViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
         setup()
     }
 
-    /// Unavailable — Interface Builder is not supported. Traps to enforce the
-    /// programmatic-only invariant.
+    /// Unavailable — Interface Builder is not supported. Traps to enforce
+    /// the programmatic-only invariant.
     @available(*, unavailable)
     public required init?(coder _: NSCoder) {
         interfaceBuilderSucks
@@ -75,18 +134,20 @@ open class SceneController<View: ContentView>: AbstractController
 
     // MARK: View Lifecycle
 
-    /// Sets up window chrome (background, root view, title, bar buttons, swipe-back),
-    /// then fires the `viewDidLoad` lifecycle subject so the ViewModel's pipelines see it.
+    /// Sets up window chrome (background, root view, title, bar buttons,
+    /// swipe-back), then fires the `viewDidLoad` lifecycle subject so the
+    /// ViewModel's pipelines see it.
     ///
-    /// Each opt-in protocol (`TitledScene`, `Right/LeftBarButtonContentMaking`,
-    /// `BackButtonHiding`) is detected via runtime cast — there is no required
-    /// override in subclasses, and absence is the no-op default.
+    /// Each opt-in protocol (``TitledScene``,
+    /// ``RightBarButtonContentMaking``, ``LeftBarButtonContentMaking``,
+    /// ``BackButtonHiding``) is detected via runtime cast — there is no
+    /// required override in subclasses, and absence is the no-op default.
     override open func viewDidLoad() {
         super.viewDidLoad()
 
-        // App-wide background colour goes on the controller's view (visible behind
-        // the content view during animations); content view is transparent so it
-        // composes against this colour rather than masking it.
+        // App-wide background colour goes on the controller's view (visible
+        // behind the content view during animations); content view is
+        // transparent so it composes against this colour rather than masking it.
         view.backgroundColor = rootBackgroundColor
         rootContentView.backgroundColor = .clear
         view.addSubview(rootContentView)
@@ -98,14 +159,16 @@ open class SceneController<View: ContentView>: AbstractController
             rootContentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        // Auto-set the navigation title only if a non-empty `TitledScene.title` is provided.
-        // `case let sceneTitle = …` is just a destructuring binding — could be a plain `let`.
+        // Auto-set the navigation title only if a non-empty `TitledScene.title`
+        // is provided. `case let sceneTitle = …` is just a destructuring
+        // binding — could be a plain `let`.
         if let titled = self as? TitledScene, case let sceneTitle = titled.sceneTitle, !sceneTitle.isEmpty {
             title = sceneTitle
         }
 
         // Opt-in static bar-button installation. Dynamic per-screen changes go
-        // through the `…BarButtonContentSubject` instead (see `makeAndSubscribeToInputFromController`).
+        // through the `…BarButtonContentSubject` instead (see
+        // `makeAndSubscribeToInputFromController`).
         if let rightButtonMaker = self as? RightBarButtonContentMaking {
             rightButtonMaker.setRightBarButton(for: self)
         }
@@ -114,9 +177,10 @@ open class SceneController<View: ContentView>: AbstractController
             leftButtonMaker.setLeftBarButton(for: self)
         }
 
-        // BackButtonHiding screens both hide the chevron AND disable interactive
-        // pop — typically used on flow-terminating screens like a successful-create
-        // confirmation, where backing up would re-enter an inconsistent state.
+        // BackButtonHiding screens both hide the chevron AND disable
+        // interactive pop — typically used on flow-terminating screens like
+        // a successful-create confirmation, where backing up would re-enter
+        // an inconsistent state.
         if self is BackButtonHiding {
             navigationItem.hidesBackButton = true
         }
@@ -129,8 +193,8 @@ open class SceneController<View: ContentView>: AbstractController
         viewDidLoadSubject.send(())
     }
 
-    /// Re-applies the navigation bar layout (in case it was changed by a previous
-    /// scene) and forwards the lifecycle event.
+    /// Re-applies the navigation bar layout (in case it was changed by a
+    /// previous scene) and forwards the lifecycle event.
     override open func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         applyLayoutIfNeeded()
@@ -147,15 +211,17 @@ open class SceneController<View: ContentView>: AbstractController
 // MARK: Private
 
 private extension SceneController {
-    /// Called from the designated initializer. Currently a thin wrapper so
-    /// future setup steps can be added without touching the init body.
+    /// Called from the designated initializer.
+    ///
+    /// Currently a thin wrapper so future setup steps can be added without
+    /// touching the init body.
     func setup() {
         bindViewToViewModel()
     }
 
-    /// Constructs the ViewModel-facing `InputFromController`, eagerly subscribing
-    /// the controller-side sinks (title text, toasts, dynamic bar-button updates)
-    /// so the ViewModel can fire-and-forget those subjects.
+    /// Constructs the ViewModel-facing ``InputFromController``, eagerly
+    /// subscribing the controller-side sinks (title text, toasts, dynamic
+    /// bar-button updates) so the ViewModel can fire-and-forget those subjects.
     ///
     /// All sinks hop to `RunLoop.main` because they touch UIKit; `[weak self]`
     /// avoids a retain cycle with the long-lived controller-owned subjects.
@@ -200,10 +266,14 @@ private extension SceneController {
     }
 
     /// Performs the central wiring step:
-    ///   View → InputFromView, Controller → InputFromController,
-    ///   ViewModel.transform(_:) → Output, View.populate(with:) → bindings.
-    /// Each cancellable returned by `populate` is stored so the bindings live as
-    /// long as this controller does.
+    ///
+    ///   * View → InputFromView,
+    ///   * Controller → InputFromController,
+    ///   * ViewModel.transform(_:) → Output,
+    ///   * View.populate(with:) → bindings.
+    ///
+    /// Each cancellable returned by `populate` is stored so the bindings
+    /// live as long as this controller does.
     func bindViewToViewModel() {
         let inputFromView = rootContentView.inputFromView
         let inputFromController = makeAndSubscribeToInputFromController()
@@ -214,12 +284,12 @@ private extension SceneController {
         rootContentView.populate(with: output).forEach { $0.store(in: &cancellables) }
     }
 
-    /// Drives `NavigationBarLayoutingNavigationController` to apply the right
-    /// nav-bar layout for the current scene each time it appears.
+    /// Drives ``NavigationBarLayoutingNavigationController`` to apply the
+    /// right nav-bar layout for the current scene each time it appears.
     ///
     /// Logic ladder:
     ///   1. No nav controller? Nothing to do.
-    ///   2. Nav controller is the wrong class? That's a programming error — crash loudly.
+    ///   2. Nav controller is the wrong class? Programmer error — crash loudly.
     ///   3. Scene doesn't own a layout? No-op (the previous layout stays).
     ///   4. Same layout as last applied? Skip the work (avoid pointless animations).
     ///   5. Otherwise apply the new layout.

@@ -2,27 +2,45 @@
 
 import UIKit
 
-/// Protocol exposing the runtime class name as a `String`. Restricted to
-/// `NSObjectProtocol` so we can reach `NSStringFromClass`.
+/// Protocol exposing the runtime class name as a `String`.
+///
+/// Restricted to `NSObjectProtocol` so we can reach `NSStringFromClass`.
+///
+/// ## Example
+///
+/// ```swift
+/// final class SettingsCell: UITableViewCell {}
+/// print(SettingsCell.className)         // "SettingsCell"
+/// ```
 public protocol ClassIdentifiable: NSObjectProtocol {
     /// The class name (without the module prefix).
     static var className: String { get }
 }
 
-/// Protocol exposing a stable string reuse identifier — used as the
-/// cell-reuse identifier in `SingleCellTypeTableView`.
+/// Protocol exposing a stable string reuse identifier — used as the cell-
+/// reuse identifier in ``SingleCellTypeTableView``.
 ///
 /// Deliberately named `ReuseIdentifiable` (rather than the more obvious
 /// `Identifiable`) to avoid shadowing Swift's stdlib `Identifiable` protocol.
-/// They are unrelated — `Swift.Identifiable` requires an `id` of any
-/// `Hashable` type for SwiftUI/diffing, whereas this requires a `String`
-/// for UIKit cell registration.
+/// They are unrelated:
 ///
-/// `@MainActor` so the auto-conformance `extension UITableViewCell:
-/// ReuseIdentifiable {}` matches `UITableViewCell`'s `@MainActor` isolation
-/// in the iOS 26 SDK. `ClassIdentifiable` (parent in the default impl) stays
-/// non-isolated because `NSStringFromClass` is thread-safe and `NSObject`
-/// itself isn't `@MainActor`.
+///   * `Swift.Identifiable` requires an `id` of any `Hashable` type for
+///     SwiftUI/diffing.
+///   * `ReuseIdentifiable` requires a `String` for UIKit cell registration.
+///
+/// `UITableViewCell` gets automatic conformance via the extension below, so
+/// you almost never need to declare conformance manually — just register and
+/// dequeue by class.
+///
+/// ## Example
+///
+/// ```swift
+/// // No identifier wiring needed — derived from the class name.
+/// final class HomeRowCell: UITableViewCell {}
+///
+/// tableView.register(HomeRowCell.self, forCellReuseIdentifier: HomeRowCell.identifier)
+/// let cell = tableView.dequeueReusableCell(withIdentifier: HomeRowCell.identifier, for: indexPath)
+/// ```
 @MainActor
 public protocol ReuseIdentifiable {
     /// Stable string identifier used as the UIKit cell-reuse identifier.
@@ -30,20 +48,24 @@ public protocol ReuseIdentifiable {
 }
 
 public extension ReuseIdentifiable where Self: ClassIdentifiable {
-    /// Default — derive `identifier` from the class name. Lets every cell
-    /// type get a unique reuse identifier without per-cell boilerplate.
+    /// Default — derive `identifier` from the class name.
+    ///
+    /// Lets every cell type get a unique reuse identifier without per-cell
+    /// boilerplate.
     static var identifier: String {
         className
     }
 }
 
-/// Auto-conform every `UITableViewCell` to `ReuseIdentifiable` so cells can be
-/// registered/dequeued by class without manual identifier strings.
+/// Auto-conform every `UITableViewCell` to ``ReuseIdentifiable`` so cells can
+/// be registered/dequeued by class without manual identifier strings.
 extension UITableViewCell: ReuseIdentifiable {}
 
 extension NSObject: ClassIdentifiable {
     /// Strips the module prefix from `NSStringFromClass` to return the bare
-    /// type name (e.g. `"Zhip.SettingsTableViewCell"` → `"SettingsTableViewCell"`).
+    /// type name.
+    ///
+    /// e.g. `"Zhip.SettingsTableViewCell"` → `"SettingsTableViewCell"`.
     /// Force-unwraps the last component because every `NSStringFromClass`
     /// result is non-empty by definition.
     public static var className: String {
