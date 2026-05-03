@@ -1,6 +1,7 @@
 // MIT License — Copyright (c) 2018-2026 Open Zesame
 
 import Combine
+import Foundation
 
 /// One-way bridge between ViewModels (which decide *what* happens next) and
 /// coordinators (which know *how* to push/pop/present).
@@ -53,12 +54,21 @@ import Combine
 ///     }
 /// }
 /// ```
-/// `@MainActor` because both producers (view-models calling ``next(_:)``)
-/// and consumers (coordinators sinking on ``navigation``) run on the main
-/// thread in this UIKit-based architecture.
+/// `@MainActor` because the property `navigation` (a `PassthroughSubject`-
+/// backed publisher) is consumed by coordinators on the main thread in this
+/// UIKit-based architecture.
+///
+/// `@unchecked Sendable` because `PassthroughSubject` itself does not yet
+/// conform to `Sendable` (Apple's Combine has not been audited for Swift 6
+/// strict concurrency). The unchecked claim is safe here because every
+/// mutation of `navigationSubject` is funnelled through ``next(_:)``, which
+/// hops to the main actor before sending; the lazy `navigation` accessor is
+/// `@MainActor`-isolated. Remove `@unchecked` when Combine's
+/// `PassthroughSubject` gains native `Sendable` conformance.
 @MainActor
-public final class Navigator<NavigationStep> {
-    /// Internal backing subject. Exposed read-only via ``navigation``.
+public final class Navigator<NavigationStep>: @unchecked Sendable {
+    /// Internal backing subject. Exposed read-only via ``navigation``. All
+    /// writes go through ``next(_:)`` which guarantees a main-actor hop.
     private let navigationSubject = PassthroughSubject<NavigationStep, Never>()
 
     /// Erased publisher coordinators subscribe to.
@@ -73,12 +83,21 @@ public final class Navigator<NavigationStep> {
     public init() {}
 }
 
-public extension Navigator {
+public extension Navigator where NavigationStep: Sendable {
     /// Emits `step` on ``navigation``.
     ///
     /// Called by ViewModels to declare a navigation intent. The Navigator does
     /// no work itself — the connected coordinator decides how to satisfy the
     /// intent (push, pop, present, finish flow).
+    ///
+    /// `nonisolated` so it is safe to call from any actor context — including
+    /// `Combine.sink` closures that resume on the cooperative thread pool
+    /// after `await`-ing an async use case (e.g. a Zesame `Future` whose
+    /// `Task { … promise(.success(value)) }` does not preserve caller
+    /// isolation). When called off-main the actual subject send is hopped
+    /// to the main actor, so coordinator subscribers always receive on
+    /// main. When already on main the fast path avoids the unnecessary
+    /// `Task { @MainActor in … }` hop.
     ///
     /// ## Example
     ///
@@ -90,7 +109,11 @@ public extension Navigator {
     /// ```
     ///
     /// - Parameter step: The navigation step to emit.
-    func next(_ step: NavigationStep) {
-        navigationSubject.send(step)
+    nonisolated func next(_ step: NavigationStep) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { navigationSubject.send(step) }
+        } else {
+            Task { @MainActor in navigationSubject.send(step) }
+        }
     }
 }
