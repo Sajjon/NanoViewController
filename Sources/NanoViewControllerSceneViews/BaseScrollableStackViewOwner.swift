@@ -115,15 +115,23 @@ private extension BaseScrollableStackViewOwner {
     ///   * matches the scroll view's width (so horizontal scrolling is disabled),
     ///   * is at least as tall as the scroll view (so short content centres),
     ///   * pins top to `contentLayoutGuide.topAnchor` so content can extend
-    ///     under the nav bar, and bottom to `keyboardLayoutGuide.topAnchor`
-    ///     to **match** the scroll view's own bottom anchor (set in
-    ///     ``AbstractSceneView/setupScrollViewConstraints()``).
+    ///     under the nav bar,
+    ///   * pins bottom to either:
+    ///     - `safeAreaLayoutGuide.bottomAnchor` for ``PullToRefreshCapable``
+    ///       scenes — those scenes use
+    ///       `contentInsetAdjustmentBehavior = .always`, which auto-adds a
+    ///       safe-area bottom inset; pinning the content here keeps the
+    ///       inset and the content-end coherent (no ~34pt blank scrollable
+    ///       zone below the content), and lets the refresh spinner clear
+    ///       the home indicator when pulled.
+    ///     - `keyboardLayoutGuide.topAnchor` otherwise — `.never` content
+    ///       inset adjustment plus `usesBottomSafeArea = false` (set in
+    ///       ``AbstractSceneView``) means the guide tracks `self.bottomAnchor`
+    ///       at rest (full-bleed under the home indicator) and moves up
+    ///       when a keyboard appears.
     ///
-    /// The bottom-anchor alignment is load-bearing: if the content view
-    /// extended below the scroll view's frame (e.g. by pinning to
-    /// `self.bottomAnchor` while the scroll view stops at the safe area),
-    /// devices with a home indicator would gain ~34pt of blank scrollable
-    /// space at the bottom even when no keyboard is on screen.
+    /// The scroll view itself always pins to `keyboardLayoutGuide.topAnchor`,
+    /// so keyboard avoidance works regardless of which mode the scene is in.
     func setupBaseScrollableStackViewOwner() {
         scrollViewContentView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -131,6 +139,9 @@ private extension BaseScrollableStackViewOwner {
 
         let contentLayoutGuide = scrollView.contentLayoutGuide
         let frameLayoutGuide = scrollView.frameLayoutGuide
+        let bottomAnchor: NSLayoutYAxisAnchor = self is PullToRefreshCapable
+            ? safeAreaLayoutGuide.bottomAnchor
+            : keyboardLayoutGuide.topAnchor
 
         let heightAtLeastFrame = scrollViewContentView.heightAnchor.constraint(
             greaterThanOrEqualTo: frameLayoutGuide.heightAnchor
@@ -143,7 +154,7 @@ private extension BaseScrollableStackViewOwner {
             scrollViewContentView.leadingAnchor.constraint(equalTo: contentLayoutGuide.leadingAnchor),
             scrollViewContentView.trailingAnchor.constraint(equalTo: contentLayoutGuide.trailingAnchor),
             scrollViewContentView.topAnchor.constraint(equalTo: contentLayoutGuide.topAnchor),
-            scrollViewContentView.bottomAnchor.constraint(equalTo: keyboardLayoutGuide.topAnchor),
+            scrollViewContentView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
     }
 }
