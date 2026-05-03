@@ -16,7 +16,9 @@ import Foundation
 /// site. Centralising it means every binding gets the same guarantees:
 ///
 ///   * The wrapped object is captured weakly — no retain cycles, ever.
-///   * Writes that arrive on a background thread are hopped to `DispatchQueue.main`.
+///   * Writes happen on the main actor (the binder is `@MainActor`); the
+///     `-->` operator hops to `RunLoop.main` first, so callers don't have
+///     to think about thread affinity at the binding site.
 ///   * Writes after the wrapped object is deallocated are silently dropped.
 ///
 /// ## Example — wiring up a custom binder

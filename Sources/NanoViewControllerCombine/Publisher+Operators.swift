@@ -13,10 +13,15 @@ public extension Publisher where Failure == Never {
     /// Tests can pass `{ $0() }` to deliver values synchronously, which lets
     /// coordinator tests assert on side effects without pumping the runloop.
     ///
-    /// `receiveValue` is `@MainActor` because the call sites (coordinator
-    /// navigation handlers, `populate(with:)` bindings) all touch UIKit.
-    /// `MainActor.assumeIsolated` re-establishes the actor isolation after
-    /// the schedule closure has run on whatever thread the upstream sinks on.
+    /// > Important: The `schedule` closure **must** invoke its inner block on
+    /// > the main thread. The default does, via `DispatchQueue.main.async`. A
+    /// > test fake that wants synchronous delivery (`schedule: { $0() }`)
+    /// > must therefore be called from a `@MainActor` test method. If the
+    /// > inner block runs off-main, the
+    /// > `MainActor.assumeIsolated`-bound call to `receiveValue` will trap.
+    /// > In practice this is exactly the contract callers want — they're
+    /// > driving UIKit-bound `@MainActor` handlers — but the precondition is
+    /// > worth stating explicitly.
     ///
     /// ## Example
     ///
@@ -28,7 +33,8 @@ public extension Publisher where Failure == Never {
     ///
     /// - Parameters:
     ///   - schedule: Closure that decides how to dispatch the receive callback.
-    ///     Defaults to `DispatchQueue.main.async`.
+    ///     Must invoke its inner block on the main thread. Defaults to
+    ///     `DispatchQueue.main.async`.
     ///   - receiveValue: The handler invoked for each received value, on the
     ///     main actor.
     /// - Returns: The cancellable subscription.

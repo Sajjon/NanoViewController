@@ -72,20 +72,26 @@ public final class DispatchMainScheduler: MainScheduler {
     }
 }
 
-/// Test ``MainScheduler`` that invokes work synchronously on the calling
-/// thread.
+/// Test ``MainScheduler`` that invokes work synchronously on the main actor.
 ///
-/// Lets navigation hops resolve before the test's next assertion. **Do not**
-/// use in production — synchronous delivery on a non-main thread will violate
-/// UIKit's main-thread requirement.
+/// `MainScheduler` (and therefore this conformer) is `@MainActor`, so
+/// `schedule(_:)` is callable only from a main-actor context — typically a
+/// `@MainActor`-annotated `XCTestCase` method. From there the call resolves
+/// without any actor hop, letting tests drive navigation pulses synchronously
+/// and assert on side effects on the next line, without pumping a runloop.
 ///
 /// ## Example
 ///
 /// ```swift
-/// var calls = 0
-/// let scheduler = ImmediateMainScheduler()
-/// scheduler.schedule { calls += 1 }
-/// XCTAssertEqual(calls, 1)        // already incremented; no runloop pump needed
+/// @MainActor
+/// final class CartViewModelTests: XCTestCase {
+///     func test_addToCart_invokesCompletion() {
+///         var calls = 0
+///         let scheduler = ImmediateMainScheduler()
+///         scheduler.schedule { calls += 1 }
+///         XCTAssertEqual(calls, 1)        // already incremented; no runloop pump
+///     }
+/// }
 /// ```
 @MainActor
 public final class ImmediateMainScheduler: MainScheduler {

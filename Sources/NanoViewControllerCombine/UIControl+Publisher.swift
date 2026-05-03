@@ -100,11 +100,13 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
         self.subscriber = subscriber
         self.control = control
         self.events = events
-        // `addTarget` is `@MainActor` in the iOS 26 SDK. The publisher is
-        // only ever subscribed-to from `populate(with:)` (already
-        // main-actor), so assuming main-actor isolation here is correct.
-        MainActor.assumeIsolated {
-            control.addTarget(self, action: #selector(handleEvent), for: events)
+        // `addTarget` is `@MainActor` in iOS 26. The publisher is only ever
+        // subscribed-to from `populate(with:)` (already main-actor), so the
+        // common path is `Thread.isMainThread == true`. Hop to main as a
+        // safety net for any caller that subscribes off-main.
+        Self.runOnMain { [weak self] in
+            guard let self else { return }
+            control.addTarget(self, action: #selector(Self.handleEvent), for: events)
         }
     }
 
@@ -114,11 +116,29 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
 
     /// Drops the target/action registration and forgets the subscriber so
     /// future events become no-ops.
+    ///
+    /// Combine may invoke `cancel()` from any thread (e.g. `AnyCancellable`
+    /// `deinit` running off-main), so we hop to main rather than asserting
+    /// isolation. The off-main path schedules an `async` removal, which is
+    /// safe because UIKit's target/action map is itself main-actor-isolated.
     func cancel() {
-        MainActor.assumeIsolated {
-            control?.removeTarget(self, action: #selector(handleEvent), for: events)
+        Self.runOnMain { [weak self, control = control, events = events] in
+            control?.removeTarget(self, action: #selector(Self.handleEvent), for: events)
         }
+        // `subscriber = nil` is fine off-main — `subscriber` is a stored
+        // generic property, not a `@MainActor`-isolated UIKit reference.
         subscriber = nil
+    }
+
+    /// Runs `block` synchronously when already on main, otherwise hops via
+    /// `DispatchQueue.main.async`. Avoids the `MainActor.assumeIsolated`
+    /// trap for off-main `cancel()` calls.
+    private static func runOnMain(_ block: @escaping @Sendable () -> Void) {
+        if Thread.isMainThread {
+            MainActor.assumeIsolated { block() }
+        } else {
+            DispatchQueue.main.async { block() }
+        }
     }
 
     @objc private func handleEvent() {

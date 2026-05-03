@@ -19,10 +19,14 @@ import PackageDescription
 
 // Compile every target in Swift 6 language mode. iOS 26's UIKit ships
 // with `UIView`, `UIViewController`, `UITableViewCell`, etc. annotated
-// `@MainActor`; the package's UI-bound protocols are explicitly
-// `@MainActor` so those conformances hold under Swift 6's strict
-// concurrency checks. The thread-safe utilities (`ActivityIndicator`,
-// `ErrorTracker`, `Navigator`, etc.) are `@unchecked Sendable`.
+// `@MainActor`; the package's UI-bound surface is correspondingly
+// `@MainActor` (protocols, classes, `@MainActor`-isolated view-model
+// hierarchy, `Navigator`/`Coordinating`, the DI primitives that touch
+// UIKit). Value structs (`BarButtonContent`, `NavigationBarLayout`)
+// are plain `Sendable`. The only `@unchecked Sendable` left is
+// `UIControlSubscription` — Combine's `Subscription` protocol is
+// non-isolated, so a `@MainActor` class can't directly conform; the
+// `@unchecked` is documented in-source with the actual invariants.
 let swift6Mode: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
 ]
