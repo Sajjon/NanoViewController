@@ -143,6 +143,19 @@ final class UIControlSubscription<S: Subscriber, Control: UIControl>: Subscripti
     /// `AnyCancellable.deinit` releasing its only strong reference: the hop
     /// could resolve `nil` before `removeTarget` ran, leaving a stale
     /// pointer in UIKit's target/action map.
+    ///
+    /// > Note: When `cancel()` is invoked **off** the main thread, the
+    /// > teardown is deferred to the next main-queue cycle. Strictly
+    /// > speaking, a UIKit event fired on main between `cancel()`
+    /// > returning and the deferred block running would pump one extra
+    /// > value into the subscriber — a microsecond-window relaxation of
+    /// > Combine's "no further events after cancel" contract. The action
+    /// > callback already captures `[weak self]`, and off-main cancels
+    /// > only originate from `AnyCancellable.deinit` (which means the
+    /// > subscriber is being torn down too), so any leaked value is
+    /// > received by a soon-to-deallocate sink. A synchronous nil-out
+    /// > would require a per-event lock; the cost isn't justified for
+    /// > the practical impact.
     func cancel() {
         Self.runOnMain { [self] in
             control?.removeTarget(target, action: #selector(ControlEventTarget.fire), for: events)
