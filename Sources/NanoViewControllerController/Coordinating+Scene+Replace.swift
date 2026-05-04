@@ -130,16 +130,15 @@ public extension UINavigationController {
         // `animated: false` on the empty-stack branch below means the
         // caller-supplied `animated: true` doesn't apply for that path.)
         let didAnimate: Bool
-        if viewControllers.isEmpty {
-            // Seating the first VC into a fresh nav stack — UIKit's
-            // `setViewControllers([vc], animated: true)` would still spin a
-            // ~0.35s push-style animation on a nav controller the user hasn't
-            // seen yet (typical case: this is a modal nav controller about
-            // to be `present(animated: true)`-ed by the caller — the user
-            // only ever sees the modal-present animation, never the
-            // empty-to-first-VC inner one). Force `animated: false` here so
-            // the visible-to-user animation chain isn't gated on an
-            // invisible-to-user one finishing first.
+        if viewControllers.isEmpty, viewIfLoaded?.window == nil {
+            // Only suppress the initial empty-stack animation when this nav
+            // controller is still off-screen. Typical case: a brand-new
+            // modal nav controller that is about to be
+            // `present(animated: true)`-ed by the caller. In contrast, an
+            // already-visible nav controller may temporarily have an empty
+            // stack during a `.replace` flow, and that first insertion is the
+            // user-visible transition, so it must continue to honor
+            // `animated`.
             setViewControllers([viewController], animated: false)
             didAnimate = false
         } else if forceReplaceAllVCsInsteadOfPush {
