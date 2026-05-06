@@ -48,9 +48,21 @@ targets:
         # `LaunchScreen` storyboard isn't shipped — leaving the key blank
         # gives a black launch screen, which is fine for a demo.
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait"
-        INFOPLIST_KEY_UIRequiresFullScreen: "YES"
         TARGETED_DEVICE_FAMILY: "1"   # iPhone only
         SWIFT_VERSION: "6.2"
+    # Scene manifest — required since iOS 13 and now also avoids the
+    # `UIWindow.init(frame:)` / `@main`-on-AppDelegate / `UIScreen.main`
+    # deprecation warnings introduced in iOS 26. Single scene config
+    # pointing at `SceneDelegate`.
+    info:
+      path: Generated.plist
+      properties:
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: "Default Configuration"
+                UISceneDelegateClassName: "$(PRODUCT_MODULE_NAME).SceneDelegate"
     dependencies:
       - package: NanoViewController
         product: NanoViewControllerCore
