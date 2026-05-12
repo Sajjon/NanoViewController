@@ -10,25 +10,38 @@ import XCTest
 final class NanoViewControllerCoreSmokeTests: XCTestCase {
     @MainActor
     func test_emptyInitializable_canSpinUpInstance() {
+        // ARRANGE
         struct Foo: EmptyInitializable {
             var marker = "spun"
         }
-        XCTAssertEqual(Foo().marker, "spun")
+
+        // ACT
+        let foo = Foo()
+
+        // ASSERT
+        XCTAssertEqual(foo.marker, "spun")
     }
 
     func test_activityIndicator_emitsFalseOnSubscribe() {
+        // ARRANGE
         let indicator = ActivityIndicator()
         var received: [Bool] = []
+
+        // ACT
         let cancellable = indicator.asPublisher().sink { received.append($0) }
+
+        // ASSERT
         XCTAssertEqual(received, [false])
         cancellable.cancel()
     }
 
     func test_errorTracker_capturesFailures() {
+        // ARRANGE
         let tracker = ErrorTracker()
         var captured: [Error] = []
         let trackerCancellable = tracker.asPublisher().sink { captured.append($0) }
 
+        // ACT
         struct StubError: Swift.Error {}
         let upstream = Fail<Int, Swift.Error>(error: StubError())
         let pipelineCancellable = tracker.track(from: upstream).sink(
@@ -36,6 +49,7 @@ final class NanoViewControllerCoreSmokeTests: XCTestCase {
             receiveValue: { _ in }
         )
 
+        // ASSERT
         XCTAssertEqual(captured.count, 1)
         trackerCancellable.cancel()
         pipelineCancellable.cancel()

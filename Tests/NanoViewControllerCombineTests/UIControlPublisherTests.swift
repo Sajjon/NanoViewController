@@ -47,20 +47,29 @@ final class UIControlPublisherTests: XCTestCase {
     // MARK: - On-main subscribe + cancel (smoke)
 
     func test_subscribeAndCancelOnMain_doesNotTrap() {
+        // ARRANGE
         let button = makeHostedButton()
         let cancellable = button.publisher(for: .touchUpInside).sink { _ in }
+
+        // ACT
         cancellable.cancel()
+
+        // ASSERT
         // Reaching this line means no `MainActor.assumeIsolated` trap fired.
         XCTAssertTrue(true)
     }
 
     func test_repeatedSubscribeCancelCycles_doNotLeak() {
+        // ARRANGE
         let button = makeHostedButton()
 
+        // ACT
         for _ in 0 ..< 50 {
             let cancellable = button.publisher(for: .touchUpInside).sink { _ in }
             cancellable.cancel()
         }
+
+        // ASSERT
         // Cycles complete without trap; UIKit's target/action map is left
         // empty (`removeTarget` ran on each cancel).
         XCTAssertEqual(button.allTargets.count, 0)
@@ -69,8 +78,8 @@ final class UIControlPublisherTests: XCTestCase {
     // MARK: - Off-main cancel (the AnyCancellable.deinit path)
 
     func test_cancelOffMain_doesNotTrap() async {
+        // ARRANGE
         let button = await MainActor.run { makeHostedButton() }
-
         // Build the subscription on main. Wrap the resulting cancellable in
         // an `@unchecked Sendable` box so we can hand it to `Task.detached`
         // without `AnyCancellable` itself needing to be `Sendable`.
@@ -80,6 +89,7 @@ final class UIControlPublisherTests: XCTestCase {
             )
         }
 
+        // ACT
         // Cancel from a *non-main* context. The previous revision would
         // trap here inside `MainActor.assumeIsolated`. The `runOnMain`
         // helper now hops via `DispatchQueue.main.async`.
@@ -87,11 +97,11 @@ final class UIControlPublisherTests: XCTestCase {
             box.value.cancel()
         }
         await detached.value
-
         // Yield long enough for the async `removeTarget` + `subscriber = nil`
         // to land on main.
         try? await Task.sleep(for: .milliseconds(50))
 
+        // ASSERT
         // Reaching this point means the off-main cancel completed without
         // trapping AND without crashing on a stale target/action pointer.
         let remainingTargets = await MainActor.run { button.allTargets.count }
@@ -101,8 +111,10 @@ final class UIControlPublisherTests: XCTestCase {
     // MARK: - Weak control reference
 
     func test_publisherDoesNotRetain_control() {
+        // ARRANGE
         weak var weakButton: UIButton?
 
+        // ACT
         autoreleasepool {
             let button = makeHostedButton()
             weakButton = button
@@ -114,6 +126,7 @@ final class UIControlPublisherTests: XCTestCase {
             button.removeFromSuperview()
         }
 
+        // ASSERT
         XCTAssertNil(weakButton, "Publisher must not retain its control")
     }
 

@@ -27,11 +27,11 @@ final class SinkOnMainTests: XCTestCase {
     // MARK: - Custom synchronous schedule
 
     func test_customSchedule_invokesBlock_synchronously() {
+        // ARRANGE
         // A schedule that runs the block immediately. The test runs on
         // `@MainActor` (class-level annotation), so `assumeIsolated` succeeds.
         let subject = PassthroughSubject<Int, Never>()
         var received: [Int] = []
-
         subject
             .sinkOnMain(
                 schedule: { block in MainActor.assumeIsolated { block() } },
@@ -39,10 +39,12 @@ final class SinkOnMainTests: XCTestCase {
             )
             .store(in: &cancellables)
 
+        // ACT
         subject.send(1)
         subject.send(2)
         subject.send(3)
 
+        // ASSERT
         // No runloop pump needed — synchronous schedule delivered all three.
         XCTAssertEqual(received, [1, 2, 3])
     }
@@ -50,10 +52,10 @@ final class SinkOnMainTests: XCTestCase {
     // MARK: - Default async schedule
 
     func test_defaultSchedule_deliversValues_afterRunloopPump() {
+        // ARRANGE
         let subject = PassthroughSubject<String, Never>()
         var received: [String] = []
         let expectation = expectation(description: "delivered")
-
         subject
             .sinkOnMain { value in
                 received.append(value)
@@ -61,9 +63,11 @@ final class SinkOnMainTests: XCTestCase {
             }
             .store(in: &cancellables)
 
+        // ACT
         subject.send("a")
         subject.send("b")
 
+        // ASSERT
         // Default schedule is `DispatchQueue.main.async` — values arrive
         // on a later runloop tick, not synchronously.
         XCTAssertEqual(received, [])
@@ -74,18 +78,20 @@ final class SinkOnMainTests: XCTestCase {
     // MARK: - Cancellation
 
     func test_cancellation_stops_furtherDelivery() {
+        // ARRANGE
         let subject = PassthroughSubject<Int, Never>()
         var received: [Int] = []
-
         let cancellable = subject.sinkOnMain(
             schedule: { block in MainActor.assumeIsolated { block() } },
             { value in received.append(value) }
         )
 
+        // ACT
         subject.send(1)
         cancellable.cancel()
         subject.send(2)
 
+        // ASSERT
         XCTAssertEqual(received, [1])
     }
 }

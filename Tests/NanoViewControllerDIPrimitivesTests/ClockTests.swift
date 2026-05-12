@@ -10,13 +10,16 @@ import XCTest
 @MainActor
 final class ClockTests: XCTestCase {
     func test_schedule_firesBlock_afterDelay() async throws {
+        // ARRANGE
         let clock = MainQueueClock()
         var fired = false
 
+        // ACT
         let task = clock.schedule(after: 0.05) {
             fired = true
         }
 
+        // ASSERT
         // Wait long enough for the sleep + block to fire.
         try await Task.sleep(for: .milliseconds(150))
         _ = task
@@ -25,16 +28,18 @@ final class ClockTests: XCTestCase {
     }
 
     func test_cancelledTask_doesNot_fireBlock() async throws {
+        // ARRANGE
         let clock = MainQueueClock()
         var fired = false
-
         let task = clock.schedule(after: 0.1) {
             fired = true
         }
 
+        // ACT
         // Cancel before the sleep completes.
         task.cancel()
 
+        // ASSERT
         // Wait past the original deadline; the block must NOT have fired.
         try await Task.sleep(for: .milliseconds(200))
 
@@ -42,28 +47,33 @@ final class ClockTests: XCTestCase {
     }
 
     func test_multipleSchedules_fireIndependently() async throws {
+        // ARRANGE
         let clock = MainQueueClock()
         var counter = 0
 
+        // ACT
         _ = clock.schedule(after: 0.02) { counter += 1 }
         _ = clock.schedule(after: 0.04) { counter += 1 }
         _ = clock.schedule(after: 0.06) { counter += 1 }
 
+        // ASSERT
         try await Task.sleep(for: .milliseconds(150))
 
         XCTAssertEqual(counter, 3)
     }
 
     func test_cancelOneTask_doesNotAffect_others() async throws {
+        // ARRANGE
         let clock = MainQueueClock()
         var firstFired = false
         var secondFired = false
-
         let first = clock.schedule(after: 0.05) { firstFired = true }
         _ = clock.schedule(after: 0.05) { secondFired = true }
 
+        // ACT
         first.cancel()
 
+        // ASSERT
         try await Task.sleep(for: .milliseconds(150))
 
         XCTAssertFalse(firstFired)

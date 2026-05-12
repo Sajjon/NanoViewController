@@ -9,14 +9,17 @@ import XCTest
 @MainActor
 final class AbstractTargetTests: XCTestCase {
     func test_pressed_forwardsEventToTriggerSubject() {
+        // ARRANGE
         let subject = PassthroughSubject<Void, Never>()
         let sut = AbstractTarget(triggerSubject: subject)
         var received = 0
         let cancellable = subject.sink { received += 1 }
 
+        // ACT
         sut.pressed()
         sut.pressed()
 
+        // ASSERT
         XCTAssertEqual(received, 2)
         cancellable.cancel()
     }
