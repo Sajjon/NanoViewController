@@ -136,6 +136,25 @@ final class UITextFieldPublishersTests: XCTestCase {
         XCTAssertEqual(received.first, true)
     }
 
+    func test_textView_isNearBottomPublisher_emitsThresholdComparisonWhenContentOverflows() {
+        // Force a contentSize that exceeds the frame so the publisher exercises
+        // the `return contentOffset.y >= yThreshold * excess` branch (line 172).
+        let view = UITextView(frame: CGRect(x: 0, y: 0, width: 100, height: 50))
+        view.contentSize = CGSize(width: 100, height: 1_000)
+        view.contentOffset = CGPoint(x: 0, y: 990)
+
+        var received: [Bool] = []
+        view.isNearBottomPublisher().sink { received.append($0) }.store(in: &cancellables)
+
+        // Fixed-threshold == 0.98 — at offset 990 of excess 950 we are well past
+        // the threshold, so the comparison evaluates true.
+        XCTAssertEqual(received.first, true)
+
+        // And once we scroll back to the top, the next emission is false.
+        view.contentOffset = .zero
+        XCTAssertEqual(received.last, false)
+    }
+
     func test_textView_didScrollNearBottomPublisher_subscribes() {
         // Just exercise the construction path — KVO on `contentOffset` doesn't
         // fire a fresh emission inside this SPM-test environment without a

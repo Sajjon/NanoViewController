@@ -1,0 +1,62 @@
+# Codecov configuration — https://docs.codecov.com/docs/codecov-yaml
+#
+# Policy: report project-wide coverage only.
+# Patch coverage (per-PR diff) is disabled because the test suite covers
+# core logic exhaustively and per-diff reporting adds noise without value.
+
+codecov:
+  # Pin Codecov's "default branch" to main. Without this, a stale
+  # master-era default on codecov.io would cause the unadorned badge URL
+  # (…/graph/badge.svg) to report an empty branch and render "unknown".
+  branch: main
+  require_ci_to_pass: true
+
+coverage:
+  status:
+    project:
+      default:
+        # Require coverage to stay at or above the current level
+        # (auto) minus a 1% grace margin.
+        target: auto
+        threshold: 1%
+        informational: false   # Fail the status check if coverage drops
+    patch:
+      default:
+        enabled: false         # Do not report patch coverage
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: true        # Only comment when coverage actually changes
+
+# Files excluded from the coverage metric. Each entry is intentional:
+#
+#   - Tests/** — tests don't test their own assertions, so counting their
+#     coverage either inflates or deflates the score arbitrarily.
+#
+#   - Pasteboard.swift / UrlOpener.swift — these production wrappers
+#     forward one line to UIKit shared singletons (UIPasteboard.general,
+#     UIApplication.shared.open). The whole point of the abstraction is
+#     that consumers inject mocks; a unit test that hit the live
+#     singleton was both flaky and slow on the simulator (see the
+#     feedback memory). Keeping these in the metric would double-penalise
+#     the abstraction.
+#
+#   - Never+Helpers.swift — three fatalError traps (interfaceBuilderSucks,
+#     incorrectImplementation, abstract). They're meant to crash the
+#     process when invariants break, so they're uncoverable by XCTest
+#     short of launching a sub-process for each one. Counting them just
+#     drags the metric down for code that's working as designed.
+#
+#   - SceneViews / Navigation / Controller — large UIKit-bound modules
+#     with no test target wired up yet. They contribute 0 lines to xccov
+#     because they're never exercised; listing them here makes that
+#     intent explicit (and prevents future contributors from being
+#     confused by a sudden coverage drop when one of them gets its first
+#     test).
+ignore:
+  - "Tests/**"
+  - "Examples/**"
+  - "Sources/NanoViewControllerDIPrimitives/Pasteboard.swift"
+  - "Sources/NanoViewControllerDIPrimitives/UrlOpener.swift"
+  - "Sources/NanoViewControllerCore/Never+Helpers.swift"
