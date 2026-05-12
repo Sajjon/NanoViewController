@@ -1,7 +1,7 @@
 // MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
 
+import Foundation
 @testable import NanoViewControllerDIPrimitives
-import UIKit
 import XCTest
 
 /// Tests for the `Pasteboard` protocol's extension overload `copy(_:)`.

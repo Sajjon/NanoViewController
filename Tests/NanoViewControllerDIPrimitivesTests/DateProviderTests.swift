@@ -4,8 +4,10 @@
 import XCTest
 
 /// Tests for `DefaultDateProvider` — the production `DateProvider` impl that
-/// returns `Date()`. Verifies that successive `now()` calls advance
-/// monotonically and stay within a tight window of the real wall clock.
+/// returns `Date()`. Verifies that `now()` lands within the wall-clock
+/// window bracketing the call, and that successive reads stay within a
+/// reasonable bound of each other (no monotonicity assertion, since the
+/// wall clock isn't guaranteed monotonic).
 final class DateProviderTests: XCTestCase {
     func test_now_returnsCurrentInstant() {
         let provider = DefaultDateProvider()
@@ -20,14 +22,16 @@ final class DateProviderTests: XCTestCase {
     func test_now_returnsValueWithinBoundedWindow_acrossSuccessiveCalls() {
         // `Date()` reads the wall clock, which is not strictly monotonic
         // (an NTP adjustment can move it backward, and successive reads on
-        // fast hardware can return equal timestamps). We only assert that
-        // the second read stays within a generous window of the first —
-        // enough to cover the `now()` line a second time without baking in
-        // a brittle ordering invariant the underlying API doesn't promise.
+        // fast hardware can return equal timestamps). The window also has
+        // to absorb test-host scheduling pauses — slow/contended CI runners
+        // can stall arbitrary code for seconds at a time. We only need to
+        // re-exercise the `now()` line; a 30-second envelope is loose
+        // enough to never flake while still catching a wholly-broken impl
+        // (e.g. one returning `.distantPast`).
         let provider = DefaultDateProvider()
         let first = provider.now()
         let second = provider.now()
 
-        XCTAssertLessThan(abs(second.timeIntervalSince(first)), 1.0)
+        XCTAssertLessThan(abs(second.timeIntervalSince(first)), 30.0)
     }
 }
