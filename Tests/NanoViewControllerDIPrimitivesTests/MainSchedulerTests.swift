@@ -16,49 +16,61 @@ final class MainSchedulerTests: XCTestCase {
     // MARK: - ImmediateMainScheduler
 
     func test_immediate_runsBlockSynchronously() {
+        // ARRANGE
         let scheduler = ImmediateMainScheduler()
         var ran = false
 
+        // ACT
         scheduler.schedule { ran = true }
 
+        // ASSERT
         XCTAssertTrue(ran, "ImmediateMainScheduler must invoke work before schedule(_:) returns")
     }
 
     func test_immediate_runsBlocksInOrder() {
+        // ARRANGE
         let scheduler = ImmediateMainScheduler()
         var calls: [Int] = []
 
+        // ACT
         scheduler.schedule { calls.append(1) }
         scheduler.schedule { calls.append(2) }
         scheduler.schedule { calls.append(3) }
 
+        // ASSERT
         XCTAssertEqual(calls, [1, 2, 3])
     }
 
     // MARK: - DispatchMainScheduler
 
     func test_dispatch_eventuallyRunsBlockOnMainActor() async {
+        // ARRANGE
         let scheduler = DispatchMainScheduler()
         let expectation = expectation(description: "block ran on main actor")
         var ran = false
 
+        // ACT
         scheduler.schedule {
             ran = true
             expectation.fulfill()
         }
 
+        // ASSERT
         await fulfillment(of: [expectation], timeout: 1.0)
         XCTAssertTrue(ran)
     }
 
     func test_dispatch_returnsBeforeBlockRuns() {
+        // ARRANGE
         // The production impl wraps `work` in a `Task { @MainActor in … }`,
         // so on the calling main-actor turn the block has not yet run.
         let scheduler = DispatchMainScheduler()
         var ran = false
 
+        // ACT
         scheduler.schedule { ran = true }
 
+        // ASSERT
         XCTAssertFalse(ran, "DispatchMainScheduler must defer work until the next main-actor cycle")
     }
 }

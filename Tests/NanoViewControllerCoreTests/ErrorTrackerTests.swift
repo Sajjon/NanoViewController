@@ -17,28 +17,34 @@ final class ErrorTrackerTests: XCTestCase {
     }
 
     func test_asPublisher_emitsErrorFromTrackedFailure() {
+        // ARRANGE
         let tracker = ErrorTracker()
         var emitted: Error?
         tracker.asPublisher().sink { emitted = $0 }.store(in: &cancellables)
 
+        // ACT
         Fail<Void, TestError>(error: .boom)
             .trackError(tracker)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
             .store(in: &cancellables)
 
+        // ASSERT
         XCTAssertNotNil(emitted)
     }
 
     func test_track_passesThroughSuccessfulValues() {
+        // ARRANGE
         let tracker = ErrorTracker()
         var received: [Int] = []
 
+        // ACT
         Just(42)
             .setFailureType(to: TestError.self)
             .trackError(tracker)
             .sink(receiveCompletion: { _ in }, receiveValue: { received.append($0) })
             .store(in: &cancellables)
 
+        // ASSERT
         XCTAssertEqual(received, [42])
     }
 }

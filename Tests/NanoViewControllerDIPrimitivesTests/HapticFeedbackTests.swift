@@ -12,17 +12,35 @@ import XCTest
 @MainActor
 final class HapticFeedbackTests: XCTestCase {
     func test_notify_success_doesNotCrash() {
+        // ARRANGE
         let haptics = DefaultHapticFeedback()
+
+        // ACT
         haptics.notify(.success)
+
+        // ASSERT
+        // Reaching this line means the production call did not trap.
     }
 
     func test_notify_warning_doesNotCrash() {
+        // ARRANGE
         let haptics = DefaultHapticFeedback()
+
+        // ACT
         haptics.notify(.warning)
+
+        // ASSERT
+        // Reaching this line means the production call did not trap.
     }
 
     func test_notify_error_doesNotCrash() {
+        // ARRANGE
         let haptics = DefaultHapticFeedback()
+
+        // ACT
         haptics.notify(.error)
+
+        // ASSERT
+        // Reaching this line means the production call did not trap.
     }
 }

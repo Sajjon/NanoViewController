@@ -17,59 +17,68 @@ final class ActivityIndicatorTests: XCTestCase {
     }
 
     func test_subscribingToTracked_setsIndicatorTrue() {
+        // ARRANGE
         let indicator = ActivityIndicator()
         let upstream = PassthroughSubject<Int, Never>()
         var received: [Bool] = []
-
         indicator.asPublisher().sink { received.append($0) }.store(in: &cancellables)
+
+        // ACT
         upstream.trackActivity(indicator)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
             .store(in: &cancellables)
 
+        // ASSERT
         XCTAssertEqual(received, [false, true])
     }
 
     func test_emittingValue_setsIndicatorFalse() {
+        // ARRANGE
         let indicator = ActivityIndicator()
         let upstream = PassthroughSubject<Int, Never>()
         var received: [Bool] = []
-
         indicator.asPublisher().sink { received.append($0) }.store(in: &cancellables)
         upstream.trackActivity(indicator)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
             .store(in: &cancellables)
 
+        // ACT
         upstream.send(1)
 
+        // ASSERT
         XCTAssertEqual(received, [false, true, false])
     }
 
     func test_completion_setsIndicatorFalse() {
+        // ARRANGE
         let indicator = ActivityIndicator()
         let upstream = PassthroughSubject<Int, Never>()
         var received: [Bool] = []
-
         indicator.asPublisher().sink { received.append($0) }.store(in: &cancellables)
         upstream.trackActivity(indicator)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
             .store(in: &cancellables)
 
+        // ACT
         upstream.send(completion: .finished)
 
+        // ASSERT
         XCTAssertEqual(received, [false, true, false])
     }
 
     func test_cancellation_setsIndicatorFalse() {
+        // ARRANGE
         let indicator = ActivityIndicator()
         let upstream = PassthroughSubject<Int, Never>()
         var received: [Bool] = []
-
         indicator.asPublisher().sink { received.append($0) }.store(in: &cancellables)
         let trackedCancellable = upstream.trackActivity(indicator)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
 
+        // ACT
         trackedCancellable.cancel()
 
+        // ASSERT
         XCTAssertEqual(received, [false, true, false])
     }
 }

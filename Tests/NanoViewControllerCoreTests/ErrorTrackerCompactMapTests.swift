@@ -19,24 +19,25 @@ final class ErrorTrackerCompactMapTests: XCTestCase {
     }
 
     func test_compactMap_projectsTypedErrors_dropsOthers() {
+        // ARRANGE
         let tracker = ErrorTracker()
         var messages: [String] = []
-
         tracker
             .compactMap { ($0 as? Validation)?.message }
             .sink { messages.append($0) }
             .store(in: &cancellables)
 
+        // ACT
         Fail<Void, Validation>(error: Validation(message: "oops"))
             .trackError(tracker)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
             .store(in: &cancellables)
-
         Fail<Void, Other>(error: Other())
             .trackError(tracker)
             .sink(receiveCompletion: { _ in }, receiveValue: { _ in })
             .store(in: &cancellables)
 
+        // ASSERT
         XCTAssertEqual(messages, ["oops"])
     }
 }

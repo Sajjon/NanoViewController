@@ -16,10 +16,10 @@ final class WithLatestFromCompletionTests: XCTestCase {
     }
 
     func test_upstreamCompletion_isForwardedDownstream() {
+        // ARRANGE
         let upstream = PassthroughSubject<Void, Never>()
         let other = CurrentValueSubject<Int, Never>(0)
         var completed = false
-
         upstream
             .withLatestFrom(other)
             .sink(
@@ -28,8 +28,10 @@ final class WithLatestFromCompletionTests: XCTestCase {
             )
             .store(in: &cancellables)
 
+        // ACT
         upstream.send(completion: .finished)
 
+        // ASSERT
         XCTAssertTrue(completed)
     }
 }

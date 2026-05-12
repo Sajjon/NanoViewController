@@ -10,16 +10,21 @@ import XCTest
 /// wall clock isn't guaranteed monotonic).
 final class DateProviderTests: XCTestCase {
     func test_now_returnsCurrentInstant() {
+        // ARRANGE
         let provider = DefaultDateProvider()
         let before = Date()
-        let now = provider.now()
-        let after = Date()
 
+        // ACT
+        let now = provider.now()
+
+        // ASSERT
+        let after = Date()
         XCTAssertGreaterThanOrEqual(now, before)
         XCTAssertLessThanOrEqual(now, after)
     }
 
     func test_now_returnsValueWithinBoundedWindow_acrossSuccessiveCalls() {
+        // ARRANGE
         // `Date()` reads the wall clock, which is not strictly monotonic
         // (an NTP adjustment can move it backward, and successive reads on
         // fast hardware can return equal timestamps). The window also has
@@ -29,9 +34,12 @@ final class DateProviderTests: XCTestCase {
         // enough to never flake while still catching a wholly-broken impl
         // (e.g. one returning `.distantPast`).
         let provider = DefaultDateProvider()
+
+        // ACT
         let first = provider.now()
         let second = provider.now()
 
+        // ASSERT
         XCTAssertLessThan(abs(second.timeIntervalSince(first)), 30.0)
     }
 }

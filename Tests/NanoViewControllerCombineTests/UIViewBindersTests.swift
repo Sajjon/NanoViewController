@@ -11,13 +11,20 @@ import XCTest
 @MainActor
 final class UIViewBindersTests: XCTestCase {
     func test_uiActivityIndicatorView_isAnimatingBinder_startsAndStops() {
+        // ARRANGE
         let spinner = UIActivityIndicatorView(style: .medium)
         XCTAssertFalse(spinner.isAnimating)
 
+        // ACT
         spinner.isAnimatingBinder.on(true)
+
+        // ASSERT
         XCTAssertTrue(spinner.isAnimating)
 
+        // ACT
         spinner.isAnimatingBinder.on(false)
+
+        // ASSERT
         XCTAssertFalse(spinner.isAnimating)
     }
 }

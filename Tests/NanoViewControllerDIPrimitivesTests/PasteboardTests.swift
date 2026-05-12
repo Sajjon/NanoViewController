@@ -24,10 +24,13 @@ final class PasteboardTests: XCTestCase {
     }
 
     func test_copyExtensionOverload_forwardsWithNilExpiration() {
+        // ARRANGE
         let pasteboard = RecordingPasteboard()
 
+        // ACT
         pasteboard.copy("hello")
 
+        // ASSERT
         XCTAssertEqual(pasteboard.copies.count, 1)
         XCTAssertEqual(pasteboard.copies.first?.value, "hello")
         XCTAssertNil(pasteboard.copies.first?.expiringAfter)
