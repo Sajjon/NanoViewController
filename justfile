@@ -47,8 +47,7 @@ test:
 # Run tests, then print a pretty per-file coverage table.
 # Produces .build/coverage.json for machine use (no extra tools required).
 cov: _run-cov
-    @xcrun xccov view --report --json {{result}} > {{cov_json}}
-    @xcrun xccov view --report {{result}}
+    @python3 scripts/cov_table.py {{cov_json}}
 
 # Like cov, but also writes Cobertura XML for upload to Codecov.
 cov-cobertura: _run-cov
@@ -80,7 +79,7 @@ fmt:
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
-# Run xcodebuild with coverage enabled and write the result bundle.
+# Run xcodebuild with coverage enabled and write the result bundle + JSON.
 _run-cov:
     rm -rf {{result}}
     mkdir -p {{result_dir}}
@@ -91,3 +90,4 @@ _run-cov:
         -resultBundlePath {{result}} \
         ENABLE_USER_SCRIPT_SANDBOXING=NO \
         | xcpretty
+    @xcrun xccov view --report --json {{result}} > {{cov_json}}
