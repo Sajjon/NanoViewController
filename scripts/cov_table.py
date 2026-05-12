@@ -16,6 +16,12 @@ Usage: python3 cov_table.py <coverage.json>
 """
 import fnmatch, json, os, re, sys
 
+USAGE = "usage: python3 cov_table.py <coverage.json>"
+
+if len(sys.argv) != 2:
+    print(USAGE, file=sys.stderr)
+    sys.exit(2)
+
 COV_JSON = sys.argv[1]
 
 RED    = "\033[31m"

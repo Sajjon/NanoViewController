@@ -48,12 +48,11 @@ comment:
 #     short of launching a sub-process for each one. Counting them just
 #     drags the metric down for code that's working as designed.
 #
-#   - SceneViews / Navigation / Controller — large UIKit-bound modules
-#     with no test target wired up yet. They contribute 0 lines to xccov
-#     because they're never exercised; listing them here makes that
-#     intent explicit (and prevents future contributors from being
-#     confused by a sudden coverage drop when one of them gets its first
-#     test).
+#
+# Note on SceneViews / Navigation / Controller: these modules have no test
+# target wired up yet, so they contribute 0 lines to xccov rather than
+# appearing as 0%. They are intentionally NOT listed below — once a test
+# target is added, their coverage should count toward the total.
 ignore:
   - "Tests/**"
   - "Examples/**"
