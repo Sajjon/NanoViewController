@@ -177,7 +177,7 @@ final class UITextFieldPublishersTests: XCTestCase {
         // Force a contentSize that exceeds the frame so the publisher exercises
         // the `return contentOffset.y >= yThreshold * excess` branch (line 172).
         let view = UITextView(frame: CGRect(x: 0, y: 0, width: 100, height: 50))
-        view.contentSize = CGSize(width: 100, height: 1_000)
+        view.contentSize = CGSize(width: 100, height: 1000)
         view.contentOffset = CGPoint(x: 0, y: 990)
         var received: [Bool] = []
 
