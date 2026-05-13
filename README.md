@@ -3,6 +3,136 @@
 # NVC: NanoViewController
 An **extremely** opinionated UIKit architecture built on top of MVVM-C allowing you to create `UIViewController`s declaratively with as little as a single line of code.
 
+## Show me code
+```swift
+// MARK: NanoViewController
+public final class SignUpScene: Scene<SignUpView> { // 🤯 3 lines VC! 
+    public static let title = "Sign Up"
+}
+
+// MARK: View
+public final class SignUpView {
+	private lazy var nameField: 	UITextField 			= { ... }()
+	private lazy var emailField: 	UITextField 			= { ... }()
+	private lazy var submitButton: 	UIButton 				= { ... }()
+	private lazy var spinner: 		UIActivityIndicatorView = { ... }()
+}
+extension SignUpView: ViewModelled {
+    public typealias ViewModel = SignUpViewModel
+
+    /// Streams the field text + the button-tap into the ViewModel. Uses the
+    /// package's `UITextField.textPublisher` (`String?`) lifted to a non-optional
+    /// `String` via the `orEmpty` helper from `NanoViewControllerCombine`.
+    public var inputFromView: InputFromView {
+        InputFromView(
+            name: nameField.textPublisher.orEmpty,
+            email: emailField.textPublisher.orEmpty,
+            submitTrigger: submitButton.tapPublisher
+        )
+    }
+
+    public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
+        output.isSubmitEnabled --> submitButton.isEnabledBinder
+        output.loadingText --> submitButton.titleBinder(for: .normal)
+        output.isLoading --> spinner.isAnimatingBinder
+    }
+}
+// MARK: ViewModel
+
+/// User outcomes the SignUp scene can emit. The coordinator subscribes and
+/// decides what happens next (here: `signedUp(_:)` advances to Home).
+public enum SignUpUserAction: Sendable {
+    case signedUp(SignedUpUser)
+}
+
+// MARK: InputFromView
+public extension SignUpViewModel {
+	/// User-event publishers the view streams in.
+	struct InputFromView {
+		public let name: AnyPublisher<String, Never>
+		public let email: AnyPublisher<String, Never>
+		public let submitTrigger: AnyPublisher<Void, Never>
+	}
+}
+
+// MARK: Output
+public extension SignUpViewModel {
+	/// Reactive bindings the view installs.
+	struct Output {
+		/// Drives the Sign Up button's `isEnabled` (`isFormValid && !isLoading`).
+		public let isSubmitEnabled: AnyPublisher<Bool, Never>
+
+		/// `true` while the sign-up service call is in flight. The view
+		/// reflects this on a `UIActivityIndicatorView` overlaid on the
+		/// submit button.
+		public let isLoading: AnyPublisher<Bool, Never>
+	}
+}
+public extension SignUpViewModel.Output {
+	var loadingText: AnyPublisher<String, Never> {
+		isLoading.map { $0 ? "" : "Sign Up" }.eraseToAnyPublisher()
+	}
+}
+
+/// Drives `SignUpView`: validates the (very loose) name + email rules,
+/// gates the submit button, and on tap calls the injected service. The
+/// returned user is forwarded as `.signedUp` to the parent coordinator.
+public final class SignUpViewModel: BaseViewModel<
+    SignUpUserAction,
+    SignUpViewModel.InputFromView,
+    SignUpViewModel.Output
+> {
+	private let service: SignUpServicing
+	/* BaseViewModel declared `public let navigator = Navigator<NavigationStep>()` */
+	/* BaseViewModel declared `public var cancellables = Set<AnyCancellable>()` */
+
+	// MARK: BaseViewModel Overrides
+    override public func transform(input: Input) -> Output {
+        // Track the in-flight state of the sign-up call so the view can show
+        // a spinner and disable the submit button while waiting.
+        let activity = ActivityIndicator()
+
+        // Name + email both non-empty → form is valid.
+        let isFormValid: AnyPublisher<Bool, Never> = input.fromView.name
+            .combineLatest(input.fromView.email)
+            .map { name, email in
+                !name.trimmingCharacters(in: .whitespaces).isEmpty
+                    && !email.trimmingCharacters(in: .whitespaces).isEmpty
+            }
+            .eraseToAnyPublisher()
+
+        let isLoading = activity.asPublisher()
+
+        // Submit is enabled only when the form is valid AND we're not already
+        // mid-request (prevents double-taps from firing two sign-ups).
+        let isSubmitEnabled = isFormValid
+            .combineLatest(isLoading)
+            .map { valid, loading in valid && !loading }
+            .eraseToAnyPublisher()
+
+        // On submit-tap: snapshot the latest (name, email), call the service
+        // (tracking activity), forward the resulting user as `.signedUp`.
+        input.fromView.submitTrigger
+            .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
+            .map { [service] name, email in
+                service.signUp(name: name, email: email)
+                    .trackActivity(activity)
+            }
+            .switchToLatest()
+            .sink { [weak self] user in
+                self?.navigator.next(.signedUp(user))
+            }
+            .store(in: &cancellables)
+
+        return Output(
+            isSubmitEnabled: isSubmitEnabled,
+            isLoading: isLoading
+        )
+    }
+}
+
+```
+
 # Library products
 The package ships six independent SPM library targets so consumers can pick exactly what they need:
 
