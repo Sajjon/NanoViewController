@@ -11,10 +11,10 @@ import XCTest
 /// dangling source.
 @MainActor
 final class UIControlPublisherDeadControlTests: XCTestCase {
-    func test_subscribingAfterControlDeallocated_completesImmediately() {
+    func test_subscribingAfterControlDeallocated_completesImmediately() throws {
         // ARRANGE
         var control: UIButton? = UIButton(type: .system)
-        let publisher = control!.publisher(for: .touchUpInside)
+        let publisher = try XCTUnwrap(control?.publisher(for: .touchUpInside))
 
         // ACT
         // Drop the only strong reference. The publisher holds a `WeakBox`,
