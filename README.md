@@ -29,9 +29,9 @@ extension SignUpView: ViewModelled {
     }
 
     public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        output.isSubmitEnabled --> submitButton.isEnabledBinder
-        output.loadingText --> submitButton.titleBinder(for: .normal)
-        output.isLoading --> spinner.isAnimatingBinder
+        output.isSubmitEnabled 	--> submitButton.isEnabledBinder
+        output.loadingText 		--> submitButton.titleBinder(for: .normal)
+        output.isLoading 		--> spinner.isAnimatingBinder
     }
 }
 
@@ -51,17 +51,6 @@ public extension SignUpViewModel {
 		public let isLoading: AnyPublisher<Bool, Never>
 	}
 }
-public extension SignUpViewModel.Output {
-	var loadingText: AnyPublisher<String, Never> {
-		isLoading.map { $0 ? "" : "Sign Up" }.eraseToAnyPublisher()
-	}
-}
-
-// MARK: NavigationStep
-public enum SignUpUserAction: Sendable {
-    case signedUp(SignedUpUser)
-}
-
 
 // MARK: ViewModel.InputFromView
 public final class SignUpViewModel: BaseViewModel<
@@ -114,6 +103,11 @@ public final class SignUpViewModel: BaseViewModel<
             isLoading: isLoading
         )
     }
+}
+
+// MARK: NavigationStep
+public enum SignUpUserAction: Sendable {
+    case signedUp(SignedUpUser)
 }
 ```
 
