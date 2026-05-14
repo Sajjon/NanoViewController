@@ -96,8 +96,8 @@ public final class SignUpViewModel: BaseViewModel<
                     .trackActivity(activity)
             }
             .switchToLatest()
-            .sink { [weak self] user in
-                self?.navigator.next(.signedUp(user))
+            .sink { [weak navigator] user in
+                navigator?.next(.signedUp(user))
             }
             .store(in: &cancellables)
 

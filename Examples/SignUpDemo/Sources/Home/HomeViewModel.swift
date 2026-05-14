@@ -25,7 +25,7 @@ public final class HomeViewModel: BaseViewModel<
 
     override public func transform(input: Input) -> Output {
         input.fromView.logoutTrigger
-            .sink { [weak self] in self?.navigator.next(.logout) }
+            .sink { [weak navigator] in navigator?.next(.logout) }
             .store(in: &cancellables)
 
         // Greeting is a one-shot publisher — no upstream state changes after
