@@ -4,6 +4,9 @@
 An **extremely** opinionated UIKit architecture built on top of MVVM-C allowing you to create `UIViewController`s declaratively with as little as a single line of code.
 
 ## Show me code
+
+A quick inline taste of the architecture — for a runnable toy example and a real-world app see [Showcase](#showcase).
+
 ```swift
 // MARK: NanoViewController
 public final class SignUpScene: Scene<SignUpView> { // 🤯 3 lines VC! 
@@ -153,9 +156,11 @@ CI runs the same pipeline on every push / PR — typos check, swiftformat lint, 
 
 The `pre-commit` hook installed by `just bootstrap` enforces: typos, shellcheck, swiftformat lint, swiftlint strict on every commit; and the full test suite on every push.
 
-# Example: SignUpDemo
+# Showcase
 
-`Examples/SignUpDemo/` is a small UIKit iOS app that walks through every load-bearing piece of the package: a `SceneController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
+## SignUpDemo (toy, in this repo)
+
+[`Examples/SignUpDemo/`](./Examples/SignUpDemo/) is a small UIKit iOS app that walks through every load-bearing piece of the package: a `SceneController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
 
 ```sh
 just example-gen     # generate Examples/SignUpDemo/SignUpDemo.xcodeproj from project.yml
@@ -164,6 +169,10 @@ open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
 ```
 
 The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `BaseViewModel<NavigationStep, InputFromView, Output>` (which fixes `FromController` to `InputFromController` and provides a `Navigator<Step>`), coordinator subscribes to that navigator and routes the user-actions to push / pop / present transitions. 
+
+## Zhip (real-world iOS wallet)
+
+[Zhip](https://github.com/Sajjon/Zhip) is a full-featured iOS wallet app built on the same architecture (originally with the predecessor "SLC: SingleLineController" — see [History](#history) below). A larger, real-world example of `NanoViewController` in production use.
 
 # History
 Implementation happened in 2018 in https://github.com/sajjon/zhip (originally https://github.com/openzesame/zhip); then called "SLC: SingleLineController". You can read my blog posts from 2018, [part one](https://medium.com/@sajjon/single-line-controller-fbe474857787) and [part two](https://medium.com/@sajjon/single-line-controller-advanced-case-406e76731ee6) - since ported from RxSwift to Combine and extracted into this separate repo.
