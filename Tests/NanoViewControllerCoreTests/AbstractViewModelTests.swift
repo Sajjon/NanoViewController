@@ -5,18 +5,21 @@ import Combine
 import XCTest
 
 /// Tests for `AbstractViewModel` — the generic base class every concrete
-/// ViewModel inherits from. Covers the synthesised `Input` struct, the empty
-/// `cancellables` bag, and verifies that subclassing + overriding `transform`
-/// works as documented.
+/// ViewModel inherits from. Covers the synthesised `Input` struct, and
+/// verifies that subclassing + overriding `transform` produces an ``Output``
+/// carrying both the publisher bag and any subscriptions started inside
+/// `transform`.
 @MainActor
 final class AbstractViewModelTests: XCTestCase {
     private struct FromView { let tap: AnyPublisher<Void, Never> }
     private struct FromController { let viewDidAppear: AnyPublisher<Void, Never> }
-    private struct Output { let title: AnyPublisher<String, Never> }
+    private struct Publishers { let title: AnyPublisher<String, Never> }
 
-    private final class StubViewModel: AbstractViewModel<FromView, FromController, Output> {
+    private final class StubViewModel: AbstractViewModel<FromView, FromController, Publishers> {
         private(set) var transformCalls = 0
-        override func transform(input: Input) -> Output {
+        // Mutating side-effect counter that proves the subscription block ran.
+        private(set) var sideEffectCalls = 0
+        override func transform(input: Input) -> Output<Publishers> {
             transformCalls += 1
             // Use both channels so the synthesised stitching is genuinely
             // exercised by the test, not just the storage.
@@ -24,16 +27,11 @@ final class AbstractViewModelTests: XCTestCase {
                 .merge(with: input.fromController.viewDidAppear)
                 .map { _ in "tapped" }
                 .eraseToAnyPublisher()
-            return Output(title: title)
+            return Output(publishers: Publishers(title: title)) {
+                // Side-effect subscription returned in the Output bag.
+                input.fromView.tap.sink { [weak self] in self?.sideEffectCalls += 1 }
+            }
         }
-    }
-
-    func test_init_createsEmptyCancellables() {
-        // ARRANGE / ACT
-        let vm = StubViewModel()
-
-        // ASSERT
-        XCTAssertTrue(vm.cancellables.isEmpty)
     }
 
     func test_input_initStitchesBothChannels() {
@@ -52,7 +50,7 @@ final class AbstractViewModelTests: XCTestCase {
         _ = input.fromController
     }
 
-    func test_subclass_transformIsInvoked() {
+    func test_subclass_transformReturnsPublishersAndCancellables() {
         // ARRANGE
         let vm = StubViewModel()
         let tap = PassthroughSubject<Void, Never>()
@@ -61,16 +59,43 @@ final class AbstractViewModelTests: XCTestCase {
             fromView: FromView(tap: tap.eraseToAnyPublisher()),
             fromController: FromController(viewDidAppear: appear.eraseToAnyPublisher())
         )
+        var bag: [AnyCancellable] = []
         var received: [String] = []
 
         // ACT
         let output = vm.transform(input: input)
-        output.title.sink { received.append($0) }.store(in: &vm.cancellables)
+        // Output carries both the publisher bag and the subscriptions
+        // started inside transform — retain both for the test's lifetime.
+        bag.append(contentsOf: output.cancellables)
+        output.publishers.title.sink { received.append($0) }.store(in: &bag)
         tap.send(())
         appear.send(())
 
         // ASSERT
         XCTAssertEqual(vm.transformCalls, 1)
         XCTAssertEqual(received, ["tapped", "tapped"])
+        // The subscription returned in `output.cancellables` fired on the tap
+        // (but not on viewDidAppear, which doesn't feed it).
+        XCTAssertEqual(vm.sideEffectCalls, 1)
+    }
+
+    func test_transform_withNoSubscriptions_returnsEmptyCancellables() {
+        // ARRANGE
+        final class NoSideEffectVM: AbstractViewModel<FromView, FromController, Publishers> {
+            override func transform(input: Input) -> Output<Publishers> {
+                Output(publishers: Publishers(title: input.fromView.tap.map { "x" }.eraseToAnyPublisher()))
+            }
+        }
+        let vm = NoSideEffectVM()
+        let input = NoSideEffectVM.Input(
+            fromView: FromView(tap: Empty().eraseToAnyPublisher()),
+            fromController: FromController(viewDidAppear: Empty().eraseToAnyPublisher())
+        )
+
+        // ACT
+        let output = vm.transform(input: input)
+
+        // ASSERT
+        XCTAssertTrue(output.cancellables.isEmpty)
     }
 }

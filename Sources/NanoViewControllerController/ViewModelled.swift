@@ -9,8 +9,8 @@ import NanoViewControllerCore
 ///
 /// A `ViewModelled` view exposes its user-driven publishers as
 /// ``inputFromView`` (read by ``SceneController``), and binds the ViewModel's
-/// `OutputVM` back into UI controls via ``populate(with:)`` — returning the
-/// `AnyCancellable`s so the controller can retain them for the view's
+/// `Publishers` bag back into UI controls via ``populate(with:)`` — returning
+/// the `AnyCancellable`s so the controller can retain them for the view's
 /// lifetime.
 ///
 /// ## Example — a minimal ViewModelled view
@@ -55,18 +55,17 @@ import NanoViewControllerCore
 ///     }
 ///
 ///     // MARK: - ViewModelled — bind the VM's output to UI controls.
-///     func populate(with output: WelcomeViewModel.OutputVM) -> [AnyCancellable] {
-///         [
-///             output.headline      --> headlineLabel,
-///             output.signUpTitle   --> signUpButton.titleBinder(for: .normal),
-///         ]
+///     func populate(with publishers: WelcomeViewModel.Publishers) -> [AnyCancellable] {
+///         publishers.headline    --> headlineLabel
+///         publishers.signUpTitle --> signUpButton.titleBinder(for: .normal)
 ///     }
 /// }
 /// ```
 ///
 /// `SceneController<WelcomeView>` then handles the rest — building the
 /// `Input`, calling `viewModel.transform(input:)`, and storing every
-/// cancellable returned by `populate(with:)` on its own `cancellables` bag.
+/// cancellable returned by `populate(with:)` *and* every cancellable carried
+/// in the `Output` from `transform` on its own `cancellables` bag.
 ///
 /// `@MainActor` because every conformer is a UIView subclass — main-thread
 /// in the iOS 26 SDK. Inherits the isolation from ``EmptyInitializable``,
@@ -89,12 +88,12 @@ public protocol ViewModelled: EmptyInitializable {
     /// Called exactly once after `transform`. The returned cancellables are
     /// retained by ``SceneController`` for the lifetime of the scene.
     ///
-    /// - Parameter viewModel: The output bag returned from
-    ///   ``ViewModelType/transform(input:)``.
+    /// - Parameter publishers: The publisher bag carried in the ``Output``
+    ///   returned from ``ViewModelType/transform(input:)``.
     /// - Returns: Every `AnyCancellable` produced by the bindings; the
     ///   controller stores them so they outlive the call.
     @BindingsBuilder
-    func populate(with viewModel: ViewModel.OutputVM) -> [AnyCancellable]
+    func populate(with publishers: ViewModel.Publishers) -> [AnyCancellable]
 }
 
 public extension ViewModelled {
@@ -110,7 +109,7 @@ public extension ViewModelled {
     /// }
     /// ```
     @BindingsBuilder
-    func populate(with _: ViewModel.OutputVM) -> [AnyCancellable] {
+    func populate(with _: ViewModel.Publishers) -> [AnyCancellable] {
         []
     }
 }
@@ -127,7 +126,7 @@ public extension ViewModelled {
 ///
 /// ```swift
 /// final class CounterViewModel: AbstractViewModel<
-///     CounterInputFromView, NoControllerInput, CounterOutput
+///     CounterInputFromView, NoControllerInput, CounterViewModel.Publishers
 /// > {
 ///     // FromController is NoControllerInput — we ignore the lifecycle channel.
 /// }
@@ -140,7 +139,8 @@ public extension ViewModelled {
 /// // Embedding code can build the input without any controller plumbing:
 /// let input = counterView.input             // <- convenience below
 /// let output = counterVM.transform(input: input)
-/// counterView.populate(with: output).forEach { $0.store(in: &cancellables) }
+/// output.cancellables.forEach { $0.store(in: &cancellables) }
+/// counterView.populate(with: output.publishers).forEach { $0.store(in: &cancellables) }
 /// ```
 public struct NoControllerInput {
     public init() {}

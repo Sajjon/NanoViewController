@@ -7,18 +7,20 @@ import Foundation
 ///
 /// `AbstractViewModel` provides:
 ///
-///   * a ``cancellables`` `Set<AnyCancellable>` for `transform` implementations
-///     to store subscriptions in,
 ///   * a synthesised nested ``Input`` struct conforming to ``InputType``, and
 ///   * an open `transform(input:)` method that traps if not overridden — so
 ///     forgetting to override surfaces immediately at runtime.
+///
+/// Subscriptions started inside `transform` are returned in the resulting
+/// ``Output`` and stored by ``SceneController`` for the lifetime of the
+/// scene — `AbstractViewModel` does **not** carry a `cancellables` bag.
 ///
 /// The class is generic over three slots:
 ///
 ///   * `FromView` — the view-driven publisher struct the View exposes.
 ///   * `FromController` — the controller-driven channel; usually
 ///     ``InputFromController`` (and that's what ``BaseViewModel`` pins).
-///   * `OutputFromViewModel` — the bag of publishers returned by `transform`.
+///   * `Publishers` — the publisher bag returned to the view.
 ///
 /// Most consumers should subclass ``BaseViewModel`` instead — that variant
 /// fixes `FromController` to ``InputFromController`` and adds a typed
@@ -39,19 +41,14 @@ import Foundation
 ///     let decrement: AnyPublisher<Void, Never>
 /// }
 ///
-/// /// Bindings back to UILabel/UIButton in the view.
-/// struct CounterOutput {
-///     let countText: AnyPublisher<String, Never>
-/// }
-///
 /// /// No SceneController in play — this view is embedded inside another screen.
 /// /// We use NoControllerInput as the controller channel.
 /// final class CounterViewModel: AbstractViewModel<
 ///     CounterInputFromView,
 ///     NoControllerInput,
-///     CounterOutput
+///     CounterViewModel.Publishers
 /// > {
-///     override func transform(input: Input) -> CounterOutput {
+///     override func transform(input: Input) -> Output<Publishers> {
 ///         let count = Publishers.Merge(
 ///             input.fromView.increment.map { +1 },
 ///             input.fromView.decrement.map { -1 }
@@ -59,9 +56,18 @@ import Foundation
 ///         .scan(0, +)
 ///         .prepend(0)
 ///
-///         return CounterOutput(
-///             countText: count.map { String($0) }.eraseToAnyPublisher()
+///         return Output(
+///             publishers: Publishers(
+///                 countText: count.map { String($0) }.eraseToAnyPublisher()
+///             )
 ///         )
+///     }
+/// }
+///
+/// extension CounterViewModel {
+///     /// Bindings back to UILabel/UIButton in the view.
+///     struct Publishers {
+///         let countText: AnyPublisher<String, Never>
 ///     }
 /// }
 /// ```
@@ -72,13 +78,14 @@ import Foundation
 /// let inc = PassthroughSubject<Void, Never>()
 /// let dec = PassthroughSubject<Void, Never>()
 /// let vm  = CounterViewModel()
-/// let out = vm.transform(input: CounterViewModel.Input(
+/// let output = vm.transform(input: CounterViewModel.Input(
 ///     fromView:       CounterInputFromView(increment: inc.eraseToAnyPublisher(),
 ///                                          decrement: dec.eraseToAnyPublisher()),
 ///     fromController: NoControllerInput()
 /// ))
+/// var bag: [AnyCancellable] = output.cancellables
 /// var collected: [String] = []
-/// out.countText.sink { collected.append($0) }.store(in: &vm.cancellables)
+/// output.publishers.countText.sink { collected.append($0) }.store(in: &bag)
 ///
 /// inc.send(()); inc.send(()); dec.send(())
 /// XCTAssertEqual(collected, ["0", "1", "2", "1"])
@@ -89,14 +96,7 @@ import Foundation
 /// they're owned by `SceneController` (a `UIViewController` subclass) and
 /// their `transform(input:)` runs on the main actor.
 @MainActor
-open class AbstractViewModel<FromView, FromController, OutputFromViewModel>: ViewModelType {
-    /// Bag of Combine subscriptions owned by this ViewModel.
-    ///
-    /// `transform` implementations call `.store(in: &cancellables)` on every
-    /// subscription they create so the subscriptions outlive the `transform`
-    /// call and are deinitialized together with the ViewModel itself.
-    public var cancellables = Set<AnyCancellable>()
-
+open class AbstractViewModel<FromView, FromController, Publishers>: ViewModelType {
     /// The concrete ``InputType`` Swift synthesizes for each `AbstractViewModel`
     /// specialisation.
     ///
@@ -131,8 +131,9 @@ open class AbstractViewModel<FromView, FromController, OutputFromViewModel>: Vie
     /// value (which would break scene wiring further down the line).
     ///
     /// - Parameter input: The pre-stitched ``Input`` with both channels.
-    /// - Returns: A bag of publishers the view binds to UI controls.
-    open func transform(input _: Input) -> OutputFromViewModel {
+    /// - Returns: An ``Output`` wrapping the publisher bag and the
+    ///   subscriptions started inside `transform`.
+    open func transform(input _: Input) -> Output<Publishers> {
         abstract
     }
 }

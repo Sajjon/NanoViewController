@@ -39,12 +39,10 @@ import Foundation
 /// }
 ///
 /// // Usage in a populate(with:) implementation:
-/// func populate(with output: ViewModel.OutputVM) -> [AnyCancellable] {
-///     [
-///         output.elevation --> card.elevationBinder,
-///         output.title     --> titleLabel,                     // -- string overload
-///         output.isEnabled --> primaryButton.isEnabledBinder,  // -- bool binder
-///     ]
+/// func populate(with publishers: ViewModel.Publishers) -> [AnyCancellable] {
+///     publishers.elevation --> card.elevationBinder
+///     publishers.title     --> titleLabel                     // -- string overload
+///     publishers.isEnabled --> primaryButton.isEnabledBinder  // -- bool binder
 /// }
 /// ```
 ///

@@ -31,10 +31,10 @@ extension SignUpView: ViewModelled {
         )
     }
 
-    public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        output.isSubmitEnabled 	--> submitButton.isEnabledBinder
-        output.loadingText 		--> submitButton.titleBinder(for: .normal)
-        output.isLoading 		--> spinner.isAnimatingBinder
+    public func populate(with publishers: ViewModel.Publishers) -> [AnyCancellable] {
+        publishers.isSubmitEnabled 	--> submitButton.isEnabledBinder
+        publishers.loadingText 		--> submitButton.titleBinder(for: .normal)
+        publishers.isLoading 		--> spinner.isAnimatingBinder
     }
 }
 
@@ -47,26 +47,25 @@ public extension SignUpViewModel {
 	}
 }
 
-// MARK: ViewModel.Output
+// MARK: ViewModel.Publishers
 public extension SignUpViewModel {
-	struct Output {
+	struct Publishers {
 		public let isSubmitEnabled: AnyPublisher<Bool, Never>
 		public let isLoading: AnyPublisher<Bool, Never>
 	}
 }
 
-// MARK: ViewModel.InputFromView
+// MARK: SignUpViewModel
 public final class SignUpViewModel: BaseViewModel<
     SignUpUserAction, // NavigationStep
     SignUpViewModel.InputFromView,
-    SignUpViewModel.Output
+    SignUpViewModel.Publishers
 > {
 	private let service: SignUpServicing
-	/* BaseViewModel declared `public let navigator = Navigator<NavigationStep>()` */
-	/* BaseViewModel declared `public var cancellables = Set<AnyCancellable>()` */
+	/* BaseViewModel declares `public let navigator = Navigator<NavigationStep>()` */
 
 	// MARK: BaseViewModel Overrides
-    override public func transform(input: Input) -> Output {
+    override public func transform(input: Input) -> Output<Publishers> {
         let activity = ActivityIndicator()
 
         // Name + email both non-empty → form is valid.
@@ -87,24 +86,25 @@ public final class SignUpViewModel: BaseViewModel<
             .map { valid, loading in valid && !loading }
             .eraseToAnyPublisher()
 
-        // On submit-tap: snapshot the latest (name, email), call the service
-        // (tracking activity), forward the resulting user as `.signedUp`.
-        input.fromView.submitTrigger
-            .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
-            .map { [service] name, email in
-                service.signUp(name: name, email: email)
-                    .trackActivity(activity)
-            }
-            .switchToLatest()
-            .sink { [weak self] user in
-                self?.navigator.next(.signedUp(user))
-            }
-            .store(in: &cancellables)
-
         return Output(
-            isSubmitEnabled: isSubmitEnabled,
-            isLoading: isLoading
-        )
+            publishers: Publishers(
+                isSubmitEnabled: isSubmitEnabled,
+                isLoading: isLoading
+            )
+        ) {
+            // On submit-tap: snapshot the latest (name, email), call the service
+            // (tracking activity), forward the resulting user as `.signedUp`.
+            input.fromView.submitTrigger
+                .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
+                .map { [service] name, email in
+                    service.signUp(name: name, email: email)
+                        .trackActivity(activity)
+                }
+                .switchToLatest()
+                .sink { [navigator] user in
+                    navigator.next(.signedUp(user))
+                }
+        }
     }
 }
 

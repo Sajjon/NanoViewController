@@ -60,8 +60,8 @@ import UIKit
 ///         )
 ///     }
 ///
-///     func populate(with output: WelcomeViewModel.OutputVM) -> [AnyCancellable] {
-///         [output.headline --> titleLabel]
+///     func populate(with publishers: WelcomeViewModel.Publishers) -> [AnyCancellable] {
+///         publishers.headline --> titleLabel
 ///     }
 /// }
 ///

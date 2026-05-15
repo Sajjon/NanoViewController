@@ -14,7 +14,7 @@ import NanoViewControllerNavigation
 ///     listens for (e.g. `enum SignUpUserAction { case signedUp(User) }`).
 ///   * `InputFromView` — the view-event channel struct nested inside the
 ///     subclass (taps, text changes, toggles).
-///   * `Output` — the bag of publishers the view binds to UI controls.
+///   * `Publishers` — the bag of publishers the view binds to UI controls.
 ///
 /// `AbstractViewModel` stays generic over `FromController` so consumers who
 /// want a different controller-input shape can still use it directly. Use
@@ -44,47 +44,51 @@ import NanoViewControllerNavigation
 ///     let userPressedTermsOfService: AnyPublisher<Void, Never>
 /// }
 ///
-/// // 3. Define the view-output channel (struct of publishers the view binds).
-/// struct SignUpOutput {
-///     let isSignUpEnabled: AnyPublisher<Bool, Never>
-///     let isLoading:       AnyPublisher<Bool, Never>
-/// }
-///
-/// // 4. The ViewModel itself — subclass BaseViewModel.
-/// final class SignUpViewModel: BaseViewModel<SignUpStep, SignUpInputFromView, SignUpOutput> {
+/// // 3. The ViewModel itself — subclass BaseViewModel.
+/// final class SignUpViewModel: BaseViewModel<SignUpStep, SignUpInputFromView, SignUpViewModel.Publishers> {
 ///     private let service: SignUpServicing
 ///
-///     init(service: SignUpServicing) { self.service = service }
+///     init(service: SignUpServicing) { self.service = service; super.init() }
+/// }
 ///
-///     override func transform(input: Input) -> SignUpOutput {
+/// // 4. Declare the publisher bag the view binds to.
+/// extension SignUpViewModel {
+///     struct Publishers {
+///         let isSignUpEnabled: AnyPublisher<Bool, Never>
+///         let isLoading:       AnyPublisher<Bool, Never>
+///     }
+/// }
+///
+/// // 5. Implement transform.
+/// extension SignUpViewModel {
+///     override func transform(input: Input) -> Output<Publishers> {
 ///         let activity = ActivityIndicator()
 ///
 ///         let credentials = input.fromView.username.combineLatest(input.fromView.password)
 ///         let isValid = credentials.map { !$0.isEmpty && $1.count >= 8 }
 ///
-///         input.fromView.userPressedSignUp
-///             .withLatestFrom(credentials)
-///             .map { [service] u, p in
-///                 service.signUp(username: u, password: p)
-///                     .trackActivity(activity)
-///                     .replaceErrorWithEmpty()
-///             }
-///             .switchToLatest()
-///             .sink { [navigator] user in navigator.next(.signedUp(user)) }
-///             .store(in: &cancellables)
+///         return Output(
+///             publishers: Publishers(
+///                 isSignUpEnabled: isValid.eraseToAnyPublisher(),
+///                 isLoading:       activity.asPublisher()
+///             )
+///         ) {
+///             input.fromView.userPressedSignUp
+///                 .withLatestFrom(credentials)
+///                 .map { [service] u, p in
+///                     service.signUp(username: u, password: p)
+///                         .trackActivity(activity)
+///                         .replaceErrorWithEmpty()
+///                 }
+///                 .switchToLatest()
+///                 .sink { [navigator] user in navigator.next(.signedUp(user)) }
 ///
-///         input.fromView.userPressedHaveAccount
-///             .sink { [navigator] in navigator.next(.userPressedHaveAccount) }
-///             .store(in: &cancellables)
+///             input.fromView.userPressedHaveAccount
+///                 .sink { [navigator] in navigator.next(.userPressedHaveAccount) }
 ///
-///         input.fromView.userPressedTermsOfService
-///             .sink { [navigator] in navigator.next(.userPressedTermsOfService) }
-///             .store(in: &cancellables)
-///
-///         return SignUpOutput(
-///             isSignUpEnabled: isValid.eraseToAnyPublisher(),
-///             isLoading:       activity.asPublisher()
-///         )
+///             input.fromView.userPressedTermsOfService
+///                 .sink { [navigator] in navigator.next(.userPressedTermsOfService) }
+///         }
 ///     }
 /// }
 /// ```
@@ -92,8 +96,8 @@ import NanoViewControllerNavigation
 /// The coordinator subscribes to `signUpVM.navigator.navigation` and routes
 /// each `SignUpStep` to a push/present/finish — see ``BaseCoordinator`` for
 /// that side of the wiring.
-open class BaseViewModel<NavigationStep: Sendable, InputFromView, Output>:
-    AbstractViewModel<InputFromView, InputFromController, Output>,
+open class BaseViewModel<NavigationStep: Sendable, InputFromView, Publishers>:
+    AbstractViewModel<InputFromView, InputFromController, Publishers>,
     Navigating
 {
     /// Stepper the coordinator subscribes to.

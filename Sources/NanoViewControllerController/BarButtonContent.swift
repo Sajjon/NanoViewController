@@ -25,18 +25,18 @@ import UIKit
 ///
 /// ```swift
 /// final class EditProfileViewModel: BaseViewModel<…> {
-///     override func transform(input: Input) -> Output {
+///     override func transform(input: Input) -> Output<Publishers> {
 ///         let canSave = input.fromView.firstName.combineLatest(input.fromView.lastName)
 ///             .map { !$0.isEmpty && !$1.isEmpty }
 ///
-///         // Update the right bar button's enabled-ness via dynamic content.
-///         canSave
-///             .map { enabled in
-///                 BarButtonContent(title: "Save", style: enabled ? .done : .plain)
-///             }
-///             .sink { input.fromController.rightBarButtonContentSubject.send($0) }
-///             .store(in: &cancellables)
-///         // …
+///         return Output(publishers: Publishers(/* … */)) {
+///             // Update the right bar button's enabled-ness via dynamic content.
+///             canSave
+///                 .map { enabled in
+///                     BarButtonContent(title: "Save", style: enabled ? .done : .plain)
+///                 }
+///                 .sink { input.fromController.rightBarButtonContentSubject.send($0) }
+///         }
 ///     }
 /// }
 /// ```

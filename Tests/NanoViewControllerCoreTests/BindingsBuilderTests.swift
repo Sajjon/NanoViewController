@@ -1,7 +1,7 @@
 // MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
 
 import Combine
-@testable import NanoViewControllerCombine
+@testable import NanoViewControllerCore
 import XCTest
 
 /// Tests for `@BindingsBuilder` — the result builder that lets

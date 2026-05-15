@@ -15,8 +15,9 @@ import UIKit
 ///      and write-back subjects.
 ///   3. Stitches the View's ``ViewModelled/inputFromView`` together with that
 ///      controller-side input and calls ``ViewModelType/transform(input:)``
-///      on the ViewModel.
-///   4. Binds the resulting `OutputVM` back into the View via
+///      on the ViewModel, receiving an ``Output``.
+///   4. Stores the cancellables carried in the ``Output``, then binds the
+///      ``Output/publishers`` bag back into the View via
 ///      ``ViewModelled/populate(with:)``.
 ///
 /// This is the load-bearing class of the package — coordinators push instances
@@ -269,11 +270,12 @@ private extension SceneController {
     ///
     ///   * View → InputFromView,
     ///   * Controller → InputFromController,
-    ///   * ViewModel.transform(_:) → Output,
+    ///   * ViewModel.transform(_:) → Output<Publishers>,
     ///   * View.populate(with:) → bindings.
     ///
-    /// Each cancellable returned by `populate` is stored so the bindings
-    /// live as long as this controller does.
+    /// Every cancellable carried in the ``Output`` from `transform`, plus
+    /// every cancellable returned by `populate`, is stored so all bindings
+    /// and side-effect subscriptions live as long as this controller does.
     func bindViewToViewModel() {
         let inputFromView = rootContentView.inputFromView
         let inputFromController = makeAndSubscribeToInputFromController()
@@ -281,7 +283,8 @@ private extension SceneController {
         let input = ViewModel.Input(fromView: inputFromView, fromController: inputFromController)
         let output = viewModel.transform(input: input)
 
-        rootContentView.populate(with: output).forEach { $0.store(in: &cancellables) }
+        output.cancellables.forEach { $0.store(in: &cancellables) }
+        rootContentView.populate(with: output.publishers).forEach { $0.store(in: &cancellables) }
     }
 
     /// Drives ``NavigationBarLayoutingNavigationController`` to apply the
