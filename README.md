@@ -58,7 +58,6 @@ public extension SignUpViewModel {
 // MARK: SignUpViewModel
 public final class SignUpViewModel: AbstractViewModel<
     SignUpViewModel.InputFromView,
-    InputFromController,
     SignUpViewModel.Publishers,
     SignUpUserAction // NavigationStep
 > {
@@ -164,7 +163,7 @@ just example-build   # xcodebuild for iPhone 17 simulator
 open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
 ```
 
-The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `AbstractViewModel<InputFromView, InputFromController, Publishers, NavigationStep>`, declares a local `Navigator<Step>` inside `transform` and surfaces it on the returned `Output<Publishers, Step>`. The coordinator subscribes to that publisher (via the hosting scene's `.navigation`) and routes the user-actions to push / pop / present transitions. 
+The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `AbstractViewModel<InputFromView, Publishers, NavigationStep>`, declares a local `Navigator<Step>` inside `transform` and surfaces it on the returned `Output<Publishers, Step>`. The coordinator subscribes to that publisher (via the hosting scene's `.navigation`) and routes the user-actions to push / pop / present transitions. 
 
 ## Zhip (real-world iOS wallet)
 

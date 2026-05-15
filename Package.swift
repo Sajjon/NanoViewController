@@ -91,6 +91,11 @@ let package = Package(
             swiftSettings: swift6Mode
         ),
         .testTarget(
+            name: "NanoViewControllerControllerTests",
+            dependencies: ["NanoViewControllerController"],
+            swiftSettings: swift6Mode
+        ),
+        .testTarget(
             name: "NanoViewControllerCombineTests",
             dependencies: ["NanoViewControllerCombine"],
             swiftSettings: swift6Mode

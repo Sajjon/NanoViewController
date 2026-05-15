@@ -1,21 +1,44 @@
 // MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
 
 import Combine
+@testable import NanoViewControllerController
 @testable import NanoViewControllerCore
 import XCTest
 
 /// Tests for `AbstractViewModel` — the generic base class every concrete
-/// ViewModel inherits from. Covers the synthesised `Input` struct, and
-/// verifies that subclassing + overriding `transform` produces an ``Output``
-/// carrying the publisher bag, the navigation publisher, and the
+/// scene-bound ViewModel inherits from. Covers the synthesised `Input` struct,
+/// and verifies that subclassing + overriding `transform` produces an
+/// ``Output`` carrying the publisher bag, the navigation publisher, and the
 /// subscriptions started inside `transform`.
+///
+/// `AbstractViewModel` pins `FromController` to ``InputFromController``;
+/// these tests construct a stub `InputFromController` filled with `Empty()`
+/// publishers and `PassthroughSubject`s where the wiring matters.
 @MainActor
 final class AbstractViewModelTests: XCTestCase {
     private struct FromView { let tap: AnyPublisher<Void, Never> }
-    private struct FromController { let viewDidAppear: AnyPublisher<Void, Never> }
     private struct Publishers { let title: AnyPublisher<String, Never> }
 
-    private final class StubViewModel: AbstractViewModel<FromView, FromController, Publishers, Never> {
+    /// Builds an `InputFromController` whose lifecycle publishers come from
+    /// the supplied subjects (or `Empty()` by default). The write-back
+    /// subjects are real `PassthroughSubject`s the test can drive.
+    private static func makeStubInputFromController(
+        viewDidAppear: AnyPublisher<Void, Never> = Empty().eraseToAnyPublisher()
+    ) -> InputFromController {
+        InputFromController(
+            viewDidLoad: Empty().eraseToAnyPublisher(),
+            viewWillAppear: Empty().eraseToAnyPublisher(),
+            viewDidAppear: viewDidAppear,
+            leftBarButtonTrigger: Empty().eraseToAnyPublisher(),
+            rightBarButtonTrigger: Empty().eraseToAnyPublisher(),
+            titleSubject: .init(),
+            leftBarButtonContentSubject: .init(),
+            rightBarButtonContentSubject: .init(),
+            toastSubject: .init()
+        )
+    }
+
+    private final class StubViewModel: AbstractViewModel<FromView, Publishers, Never> {
         private(set) var transformCalls = 0
         // Mutating side-effect counter that proves the subscription block ran.
         private(set) var sideEffectCalls = 0
@@ -37,7 +60,7 @@ final class AbstractViewModelTests: XCTestCase {
     func test_input_initStitchesBothChannels() {
         // ARRANGE
         let view = FromView(tap: Empty().eraseToAnyPublisher())
-        let controller = FromController(viewDidAppear: Empty().eraseToAnyPublisher())
+        let controller = Self.makeStubInputFromController()
 
         // ACT
         let input = StubViewModel.Input(fromView: view, fromController: controller)
@@ -57,7 +80,9 @@ final class AbstractViewModelTests: XCTestCase {
         let appear = PassthroughSubject<Void, Never>()
         let input = StubViewModel.Input(
             fromView: FromView(tap: tap.eraseToAnyPublisher()),
-            fromController: FromController(viewDidAppear: appear.eraseToAnyPublisher())
+            fromController: Self.makeStubInputFromController(
+                viewDidAppear: appear.eraseToAnyPublisher()
+            )
         )
         var bag: [AnyCancellable] = []
         var received: [String] = []
@@ -82,7 +107,7 @@ final class AbstractViewModelTests: XCTestCase {
 
     func test_transform_withNoSubscriptions_returnsEmptyCancellables() {
         // ARRANGE
-        final class NoSideEffectVM: AbstractViewModel<FromView, FromController, Publishers, Never> {
+        final class NoSideEffectVM: AbstractViewModel<FromView, Publishers, Never> {
             override func transform(input: Input) -> Output<Publishers, Never> {
                 Output(publishers: Publishers(title: input.fromView.tap.map { "x" }.eraseToAnyPublisher()))
             }
@@ -90,7 +115,7 @@ final class AbstractViewModelTests: XCTestCase {
         let vm = NoSideEffectVM()
         let input = NoSideEffectVM.Input(
             fromView: FromView(tap: Empty().eraseToAnyPublisher()),
-            fromController: FromController(viewDidAppear: Empty().eraseToAnyPublisher())
+            fromController: Self.makeStubInputFromController()
         )
 
         // ACT
@@ -103,7 +128,7 @@ final class AbstractViewModelTests: XCTestCase {
     func test_transform_withNavigation_emitsThroughOutputChannel() {
         // ARRANGE
         enum Step: Sendable { case finished }
-        final class NavigatingVM: AbstractViewModel<FromView, FromController, Publishers, Step> {
+        final class NavigatingVM: AbstractViewModel<FromView, Publishers, Step> {
             override func transform(input: Input) -> Output<Publishers, Step> {
                 let nav = PassthroughSubject<Step, Never>()
                 return Output(
@@ -118,7 +143,7 @@ final class AbstractViewModelTests: XCTestCase {
         let tap = PassthroughSubject<Void, Never>()
         let input = NavigatingVM.Input(
             fromView: FromView(tap: tap.eraseToAnyPublisher()),
-            fromController: FromController(viewDidAppear: Empty().eraseToAnyPublisher())
+            fromController: Self.makeStubInputFromController()
         )
         var bag: [AnyCancellable] = []
         var steps: [Step] = []

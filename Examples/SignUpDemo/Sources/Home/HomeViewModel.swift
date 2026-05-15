@@ -14,7 +14,6 @@ public enum HomeUserAction: Sendable {
 /// the logout-button tap to the coordinator via the navigation publisher.
 public final class HomeViewModel: AbstractViewModel<
     HomeViewModel.InputFromView,
-    InputFromController,
     HomeViewModel.Publishers,
     HomeUserAction
 > {

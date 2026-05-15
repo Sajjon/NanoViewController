@@ -49,7 +49,6 @@ import Foundation
 ///
 /// final class SignUpViewModel: AbstractViewModel<
 ///     SignUpInputFromView,
-///     InputFromController,
 ///     SignUpViewModel.Publishers,
 ///     SignUpStep
 /// > {

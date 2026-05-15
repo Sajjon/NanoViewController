@@ -2,12 +2,15 @@
 
 import Combine
 import Foundation
+import NanoViewControllerCore
 
-/// Abstract base class supplying the boilerplate every concrete ViewModel needs.
+/// Abstract base class supplying the boilerplate every concrete scene-bound
+/// ViewModel needs.
 ///
 /// `AbstractViewModel` provides:
 ///
-///   * a synthesised nested ``Input`` struct conforming to ``InputType``, and
+///   * a synthesised nested ``Input`` struct conforming to ``InputType`` whose
+///     controller channel is pinned to ``InputFromController``, and
 ///   * an open `transform(input:)` method that traps if not overridden — so
 ///     forgetting to override surfaces immediately at runtime.
 ///
@@ -16,26 +19,28 @@ import Foundation
 /// ``SceneController`` for the lifetime of the scene — `AbstractViewModel`
 /// does **not** carry a `cancellables` bag or a stored `navigator`.
 ///
-/// The class is generic over four slots:
+/// The class is generic over three slots:
 ///
 ///   * `FromView` — the view-driven publisher struct the View exposes.
-///   * `FromController` — the controller-driven channel; usually
-///     ``InputFromController``.
 ///   * `Publishers` — the publisher bag returned to the view.
 ///   * `NavigationStep` — the enum of navigation transitions; use `Never`
 ///     for scenes that emit none.
 ///
-/// There is no longer a separate `BaseViewModel` convenience subclass; the
-/// `InputFromController` pin and the `NavigationStep` slot are both expressed
-/// directly via the four generic parameters.
+/// `FromController` is pinned to ``InputFromController`` (the controller-side
+/// channel `SceneController` builds). There is no longer a separate
+/// `BaseViewModel` convenience subclass, and no `FromController` generic —
+/// every scene-bound view-model in practice uses ``InputFromController``.
+/// View-models that don't run on a ``SceneController`` (embedded sub-views,
+/// for example) should conform to ``ViewModelType`` directly without
+/// subclassing `AbstractViewModel`.
 ///
 /// ## Example — a sign-up ViewModel with navigation
 ///
 /// ```swift
 /// import Combine
-/// import NanoViewControllerController     // for InputFromController
+/// import NanoViewControllerController
 /// import NanoViewControllerCore
-/// import NanoViewControllerNavigation     // for Navigator
+/// import NanoViewControllerNavigation
 ///
 /// enum SignUpStep: Sendable { case signedUp(User) }
 ///
@@ -47,7 +52,6 @@ import Foundation
 ///
 /// final class SignUpViewModel: AbstractViewModel<
 ///     SignUpInputFromView,
-///     InputFromController,
 ///     SignUpViewModel.Publishers,
 ///     SignUpStep
 /// > {
@@ -89,50 +93,6 @@ import Foundation
 /// }
 /// ```
 ///
-/// ## Example — a screen-less ViewModel (no navigation, no controller)
-///
-/// ```swift
-/// import Combine
-/// import NanoViewControllerCore
-///
-/// /// View-driven channel for a tiny standalone counter view.
-/// struct CounterInputFromView {
-///     let increment: AnyPublisher<Void, Never>
-///     let decrement: AnyPublisher<Void, Never>
-/// }
-///
-/// /// No SceneController in play — this view is embedded inside another screen.
-/// /// We use NoControllerInput as the controller channel and `Never` for
-/// /// NavigationStep so the convenience init on `Output` applies.
-/// final class CounterViewModel: AbstractViewModel<
-///     CounterInputFromView,
-///     NoControllerInput,
-///     CounterViewModel.Publishers,
-///     Never
-/// > {
-///     override func transform(input: Input) -> Output<Publishers, Never> {
-///         let count = Publishers.Merge(
-///             input.fromView.increment.map { +1 },
-///             input.fromView.decrement.map { -1 }
-///         )
-///         .scan(0, +)
-///         .prepend(0)
-///
-///         return Output(
-///             publishers: Publishers(
-///                 countText: count.map { String($0) }.eraseToAnyPublisher()
-///             )
-///         )
-///     }
-/// }
-///
-/// extension CounterViewModel {
-///     struct Publishers {
-///         let countText: AnyPublisher<String, Never>
-///     }
-/// }
-/// ```
-///
 /// `@MainActor` because it conforms to ``ViewModelType``, which is itself
 /// `@MainActor`. View-models in this package are inherently main-thread —
 /// they're owned by `SceneController` (a `UIViewController` subclass) and
@@ -140,7 +100,6 @@ import Foundation
 @MainActor
 open class AbstractViewModel<
     FromView,
-    FromController,
     Publishers,
     NavigationStep: Sendable
 >: ViewModelType {
@@ -152,7 +111,7 @@ open class AbstractViewModel<
     /// owns, and hands it to ``transform(input:)``.
     public struct Input: InputType {
         /// Controller-lifecycle + write-back subjects channel.
-        public let fromController: FromController
+        public let fromController: InputFromController
 
         /// User-driven publishers channel (taps, text, toggles).
         public let fromView: FromView
@@ -162,7 +121,7 @@ open class AbstractViewModel<
         /// `SceneController` calls this to stitch together the two input
         /// channels before handing the struct to `transform`. Tests call it
         /// directly when building synthetic input.
-        public init(fromView: FromView, fromController: FromController) {
+        public init(fromView: FromView, fromController: InputFromController) {
             self.fromView = fromView
             self.fromController = fromController
         }

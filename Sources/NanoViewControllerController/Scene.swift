@@ -56,10 +56,7 @@ public typealias ContentView = UIView & ViewModelled
 
 /// The standard scene-controller "shape" used throughout coordinators.
 ///
-/// Equivalent to ``SceneController`` plus a static ``TitledScene`` title. The
-/// `where` clause anchors the view-model's controller-side input shape to the
-/// package-wide ``InputFromController`` struct, so coordinators can hand the
-/// scene any `View` whose `ViewModel.Input.FromController` matches.
+/// Equivalent to ``SceneController`` plus a static ``TitledScene`` title.
 ///
 /// Use this typealias when you don't need a subclass. If your screen requires
 /// a subclass (custom lifecycle, extra UIKit hooks), inherit from

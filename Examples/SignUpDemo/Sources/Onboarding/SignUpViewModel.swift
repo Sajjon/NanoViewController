@@ -58,7 +58,6 @@ public extension SignUpViewModel.Publishers {
 /// exposed in `Output`, which the coordinator subscribes to.
 public final class SignUpViewModel: AbstractViewModel<
     SignUpViewModel.InputFromView,
-    InputFromController,
     SignUpViewModel.Publishers,
     SignUpUserAction
 > {

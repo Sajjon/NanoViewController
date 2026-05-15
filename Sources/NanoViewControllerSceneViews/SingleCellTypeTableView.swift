@@ -64,7 +64,7 @@ public typealias ListCell = CellConfigurable & UITableViewCell
 /// }
 ///
 /// /// View-model — exposes `sections` and routes selections.
-/// final class WalletsViewModel: AbstractViewModel<WalletsView.InputFromView, InputFromController, WalletsViewModel.Publishers, WalletsStep> {
+/// final class WalletsViewModel: AbstractViewModel<WalletsView.InputFromView, WalletsViewModel.Publishers, WalletsStep> {
 ///     struct Publishers {
 ///         let sections: AnyPublisher<[SectionModel<Void, WalletRow>], Never>
 ///     }

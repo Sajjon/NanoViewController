@@ -26,7 +26,7 @@ import Foundation
 /// }
 ///
 /// final class SignUpViewModel: AbstractViewModel<
-///     SignUpInputFromView, InputFromController, SignUpViewModel.Publishers, SignUpStep
+///     SignUpInputFromView, SignUpViewModel.Publishers, SignUpStep
 /// > {
 ///     override func transform(input: Input) -> Output<Publishers, SignUpStep> {
 ///         let navigator = Navigator<SignUpStep>()
