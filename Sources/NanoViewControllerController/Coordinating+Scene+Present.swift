@@ -73,14 +73,6 @@ public extension Coordinating {
         let viewControllerToPresent = NavigationBarLayoutingNavigationController(rootViewController: scene)
         navigationController.present(viewControllerToPresent, animated: animated, completion: presentationCompletion)
 
-        // Bridge the scene's navigation pulses to the caller's handler,
-        // handing the handler a closure it can call to dismiss this modal.
-        scene.navigation
-            .sinkOnMain { [weak scene] step in
-                navigationHandler(step) { animated, navigationCompletion in
-                    scene?.dismiss(animated: animated, completion: navigationCompletion)
-                }
-            }
-            .store(in: &cancellables)
+        subscribeToModalNavigation(of: scene, handler: navigationHandler)
     }
 }

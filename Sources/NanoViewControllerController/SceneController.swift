@@ -72,22 +72,15 @@ open class SceneController<View: ContentView>: AbstractController
     /// The ViewModel injected by the coordinator at construction time.
     public let viewModel: ViewModel
 
-    /// The navigation stream produced by `viewModel.transform(input:)`.
-    ///
-    /// Set during `bindViewToViewModel` (which runs eagerly from the
-    /// designated init, before the controller is handed back to the
-    /// coordinator). Coordinators subscribe to it via the typed
-    /// ``navigation`` accessor below.
-    private var transformedNavigation: AnyPublisher<ViewModel.NavigationStep, Never>!
+    /// Backing subject the controller forwards `Output.navigation` into.
+    /// Exists from construction so coordinators can subscribe to
+    /// ``navigation`` without an ordering dance with `bindViewToViewModel`.
+    private let navigationSubject = PassthroughSubject<ViewModel.NavigationStep, Never>()
 
-    /// The navigation publisher the coordinator subscribes to.
-    ///
-    /// Lazily exposed (never re-emits — it's a stable handle on the stream
-    /// produced by `transform`). Use this from coordinator hookup code
-    /// instead of reaching into the ViewModel.
-    public var navigation: AnyPublisher<ViewModel.NavigationStep, Never> {
-        transformedNavigation
-    }
+    /// The navigation publisher the coordinator subscribes to. Use this from
+    /// coordinator hookup code instead of reaching into the ViewModel.
+    public lazy var navigation: AnyPublisher<ViewModel.NavigationStep, Never> =
+        navigationSubject.eraseToAnyPublisher()
 
     /// Clock used to auto-dismiss toasts emitted via
     /// ``InputFromController/toastSubject``.
@@ -140,7 +133,7 @@ open class SceneController<View: ContentView>: AbstractController
     public required init(viewModel: ViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
-        setup()
+        bindViewToViewModel()
     }
 
     /// Unavailable — Interface Builder is not supported. Traps to enforce
@@ -229,14 +222,6 @@ open class SceneController<View: ContentView>: AbstractController
 // MARK: Private
 
 private extension SceneController {
-    /// Called from the designated initializer.
-    ///
-    /// Currently a thin wrapper so future setup steps can be added without
-    /// touching the init body.
-    func setup() {
-        bindViewToViewModel()
-    }
-
     /// Constructs the ViewModel-facing ``InputFromController``, eagerly
     /// subscribing the controller-side sinks (title text, toasts, dynamic
     /// bar-button updates) so the ViewModel can fire-and-forget those subjects.
@@ -300,15 +285,16 @@ private extension SceneController {
         let input = ViewModel.Input(fromView: inputFromView, fromController: inputFromController)
         let output = viewModel.transform(input: input)
 
-        output.cancellables.forEach { $0.store(in: &cancellables) }
-        rootContentView.populate(with: output.publishers).forEach { $0.store(in: &cancellables) }
+        cancellables.formUnion(output.cancellables)
+        cancellables.formUnion(rootContentView.populate(with: output.publishers))
 
-        // Expose the navigation publisher for the coordinator to subscribe
-        // to via `scene.navigation`. The publisher itself lives as long as
-        // the closures stored in `output.cancellables` keep its upstream
-        // (typically a `Navigator` instance constructed inside `transform`)
-        // alive.
-        transformedNavigation = output.navigation
+        // Forward navigation through the controller's own subject so coordinators
+        // see a stable publisher regardless of when they subscribe. The upstream
+        // (typically a `Navigator` constructed inside `transform`) stays alive
+        // via the `[navigator]` captures inside `output.cancellables`.
+        output.navigation
+            .subscribe(navigationSubject)
+            .store(in: &cancellables)
     }
 
     /// Drives ``NavigationBarLayoutingNavigationController`` to apply the

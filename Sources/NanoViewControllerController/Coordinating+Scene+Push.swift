@@ -84,11 +84,6 @@ public extension Coordinating {
             completion: navigationPresentationCompletion
         )
 
-        // Forward navigation steps from the scene to the caller's handler.
-        // The handler closes over coordinator state and decides whether to push
-        // another scene, present a modal, or finish the flow.
-        scene.navigation
-            .sinkOnMain { navigationHandler($0) }
-            .store(in: &cancellables)
+        subscribeToNavigation(of: scene, handler: navigationHandler)
     }
 }

@@ -9,11 +9,9 @@
 ///
 /// Coordinators conform to `Navigating` (via ``BaseCoordinator``) so a parent
 /// coordinator can listen to a child coordinator's flow-completion events.
-///
-/// ViewModels no longer conform to `Navigating` — they expose their
-/// navigation channel as part of the value returned from
-/// ``ViewModelType/transform(input:)`` (see ``Output``), and the hosting
-/// ``SceneController`` re-exposes it for the coordinator to subscribe to.
+/// ViewModels expose their navigation channel through the ``Output`` returned
+/// from ``ViewModelType/transform(input:)`` instead — see ``SceneController``
+/// for how the coordinator subscribes.
 ///
 /// ## Example — child coordinator emitting flow-completion steps
 ///

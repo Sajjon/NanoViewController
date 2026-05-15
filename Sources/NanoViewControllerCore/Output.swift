@@ -53,13 +53,11 @@ import Combine
 /// ## Late navigation subscription
 ///
 /// The coordinator subscribes to ``navigation`` *after* `transform` returns
-/// (it can't subscribe sooner — the publisher doesn't exist yet). In practice
-/// this is identical to the prior `viewModel.navigator.navigation` flow,
-/// which was also subscribed-to after the scene's `bindViewToViewModel`
-/// triggered `transform`. The only constraint: `transform` must not emit
-/// navigation **synchronously during construction** (e.g. `Just(.x).sink { … }`
-/// — that step would be dropped). Real flows emit on user input, which can't
-/// fire before the coordinator finishes wiring.
+/// (it can't subscribe sooner — the publisher doesn't exist yet). The only
+/// constraint: `transform` must not emit navigation **synchronously during
+/// construction** (e.g. `Just(.x).sink { … }` — that step would be dropped).
+/// Real flows emit on user input, which can't fire before the coordinator
+/// finishes wiring.
 ///
 /// ## Naming note — `Publishers` collides with `Combine.Publishers`
 ///
@@ -115,8 +113,10 @@ public extension Output where NavigationStep == Never {
         publishers: Publishers,
         @BindingsBuilder subscriptions: () -> [AnyCancellable] = { [] }
     ) {
-        self.publishers = publishers
-        self.navigation = Empty().eraseToAnyPublisher()
-        self.cancellables = subscriptions()
+        self.init(
+            publishers: publishers,
+            navigation: Empty().eraseToAnyPublisher(),
+            subscriptions: subscriptions
+        )
     }
 }

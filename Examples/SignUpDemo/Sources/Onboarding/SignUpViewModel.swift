@@ -70,9 +70,6 @@ public final class SignUpViewModel: AbstractViewModel<
 
 	// MARK: AbstractViewModel Overrides
     override public func transform(input: Input) -> Output<Publishers, SignUpUserAction> {
-        // Local navigator — constructed inside transform so the VM itself
-        // carries no stored state. The SceneController retains it via the
-        // cancellables/publisher capture inside Output.
         let navigator = Navigator<SignUpUserAction>()
 
         // Track the in-flight state of the sign-up call so the view can show

@@ -87,13 +87,7 @@ public extension Coordinating {
             oldVCs.forEach { $0.dismiss(animated: false, completion: nil) }
         }
 
-        scene.navigation
-            .sinkOnMain { [weak scene] step in
-                navigationHandler(step) { animated, navigationCompletion in
-                    scene?.dismiss(animated: animated, completion: navigationCompletion)
-                }
-            }
-            .store(in: &cancellables)
+        subscribeToModalNavigation(of: scene, handler: navigationHandler)
     }
 }
 

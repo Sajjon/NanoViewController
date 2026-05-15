@@ -57,22 +57,6 @@ final class AbstractViewModelTests: XCTestCase {
         }
     }
 
-    func test_input_initStitchesBothChannels() {
-        // ARRANGE
-        let view = FromView(tap: Empty().eraseToAnyPublisher())
-        let controller = Self.makeStubInputFromController()
-
-        // ACT
-        let input = StubViewModel.Input(fromView: view, fromController: controller)
-
-        // ASSERT
-        // Reading the channels back via Mirror is unnecessary — type-checking
-        // alone proves the init wired the right slot to the right channel.
-        // We just exercise the path so the line is covered.
-        _ = input.fromView
-        _ = input.fromController
-    }
-
     func test_subclass_transformReturnsPublishersAndCancellables() {
         // ARRANGE
         let vm = StubViewModel()
@@ -127,7 +111,7 @@ final class AbstractViewModelTests: XCTestCase {
 
     func test_transform_withNavigation_emitsThroughOutputChannel() {
         // ARRANGE
-        enum Step: Sendable { case finished }
+        enum Step: Sendable, Equatable { case finished }
         final class NavigatingVM: AbstractViewModel<FromView, Publishers, Step> {
             override func transform(input: Input) -> Output<Publishers, Step> {
                 let nav = PassthroughSubject<Step, Never>()
@@ -155,6 +139,6 @@ final class AbstractViewModelTests: XCTestCase {
         tap.send(())
 
         // ASSERT
-        XCTAssertEqual(steps.count, 1)
+        XCTAssertEqual(steps, [.finished])
     }
 }

@@ -65,7 +65,7 @@ public final class SignUpViewModel: AbstractViewModel<
 
 	// MARK: AbstractViewModel Overrides
     override public func transform(input: Input) -> Output<Publishers, SignUpUserAction> {
-        let navigator = Navigator<SignUpUserAction>()  // local — VM holds no state
+        let navigator = Navigator<SignUpUserAction>()
         let activity  = ActivityIndicator()
 
         // Name + email both non-empty → form is valid.

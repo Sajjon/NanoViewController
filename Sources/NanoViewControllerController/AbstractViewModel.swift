@@ -27,9 +27,7 @@ import NanoViewControllerCore
 ///     for scenes that emit none.
 ///
 /// `FromController` is pinned to ``InputFromController`` (the controller-side
-/// channel `SceneController` builds). There is no longer a separate
-/// `BaseViewModel` convenience subclass, and no `FromController` generic —
-/// every scene-bound view-model in practice uses ``InputFromController``.
+/// channel `SceneController` builds) — every scene-bound view-model uses it.
 /// View-models that don't run on a ``SceneController`` (embedded sub-views,
 /// for example) should conform to ``ViewModelType`` directly without
 /// subclassing `AbstractViewModel`.
