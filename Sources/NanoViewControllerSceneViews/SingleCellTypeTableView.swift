@@ -64,11 +64,12 @@ public typealias ListCell = CellConfigurable & UITableViewCell
 /// }
 ///
 /// /// View-model — exposes `sections` and routes selections.
-/// final class WalletsViewModel: BaseViewModel<WalletsStep, WalletsView.InputFromView, WalletsViewModel.Publishers> {
+/// final class WalletsViewModel: AbstractViewModel<WalletsView.InputFromView, InputFromController, WalletsViewModel.Publishers, WalletsStep> {
 ///     struct Publishers {
 ///         let sections: AnyPublisher<[SectionModel<Void, WalletRow>], Never>
 ///     }
-///     override func transform(input: Input) -> Output<Publishers> {
+///     override func transform(input: Input) -> Output<Publishers, WalletsStep> {
+///         let navigator = Navigator<WalletsStep>()
 ///         let sections = api.fetchWallets()
 ///             .replaceError(with: [])
 ///             .map { wallets in [SectionModel<Void, WalletRow>(
@@ -76,7 +77,10 @@ public typealias ListCell = CellConfigurable & UITableViewCell
 ///                 items: wallets.map { WalletRow(name: $0.name, balance: $0.balance) }
 ///             )] }
 ///             .eraseToAnyPublisher()
-///         return Output(publishers: Publishers(sections: sections)) {
+///         return Output(
+///             publishers: Publishers(sections: sections),
+///             navigation: navigator.navigation
+///         ) {
 ///             input.fromView.selected
 ///                 .sink { [navigator] indexPath in navigator.next(.userTappedRow(at: indexPath)) }
 ///         }

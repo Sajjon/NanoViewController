@@ -2,6 +2,7 @@
 
 import Combine
 import NanoViewControllerCombine
+import NanoViewControllerCore
 import NanoViewControllerNavigation
 import UIKit
 
@@ -22,7 +23,7 @@ public extension Coordinating {
     ///     }
     /// }
     /// ```
-    typealias NavigationHandlerModalScene<N: Navigating> = (N.NavigationStep, @escaping DismissScene) -> Void
+    typealias NavigationHandlerModalScene<VM: ViewModelType> = (VM.NavigationStep, @escaping DismissScene) -> Void
 
     /// Replaces every scene in the current navigation stack with `scene`.
     ///
@@ -53,7 +54,7 @@ public extension Coordinating {
         animated: Bool = true,
         whenReplacingFinished: Completion? = nil,
         navigationHandler: @escaping NavigationHandlerModalScene<V.ViewModel>
-    ) where V.ViewModel: Navigating {
+    ) {
         // Create a new instance of the `Scene`, injecting its ViewModel
         let scene = S(viewModel: viewModel)
 
@@ -69,14 +70,12 @@ public extension Coordinating {
     /// ``replaceAllScenes(with:viewModel:animated:whenReplacingFinished:navigationHandler:)``.
     ///
     /// Use when you already have a scene instance.
-    func replaceAllScenes<V: ContentView>(
-        with scene: some Scene<V>,
+    func replaceAllScenes<S: Scene<V>, V: ContentView>(
+        with scene: S,
         animated: Bool = true,
         whenReplacingFinished: Completion? = nil,
         navigationHandler: @escaping NavigationHandlerModalScene<V.ViewModel>
-    ) where V.ViewModel: Navigating {
-        let viewModel = scene.viewModel
-
+    ) {
         let oldVCs = navigationController.viewControllers
 
         navigationController.setRootViewControllerIfEmptyElsePush(
@@ -88,7 +87,7 @@ public extension Coordinating {
             oldVCs.forEach { $0.dismiss(animated: false, completion: nil) }
         }
 
-        viewModel.navigator.navigation
+        scene.navigation
             .sinkOnMain { [weak scene] step in
                 navigationHandler(step) { animated, navigationCompletion in
                     scene?.dismiss(animated: animated, completion: navigationCompletion)

@@ -25,17 +25,22 @@ import Foundation
 ///     case userPressedHaveAccount
 /// }
 ///
-/// final class SignUpViewModel: BaseViewModel<SignUpStep, SignUpInputFromView, SignUpOutput> {
-///     override func transform(input: Input) -> SignUpOutput {
-///         input.fromView.haveAccountTap
-///             .sink { [navigator] in navigator.next(.userPressedHaveAccount) }
-///             .store(in: &cancellables)
+/// final class SignUpViewModel: AbstractViewModel<
+///     SignUpInputFromView, InputFromController, SignUpViewModel.Publishers, SignUpStep
+/// > {
+///     override func transform(input: Input) -> Output<Publishers, SignUpStep> {
+///         let navigator = Navigator<SignUpStep>()
+///         return Output(
+///             publishers: Publishers(/* … */),
+///             navigation: navigator.navigation
+///         ) {
+///             input.fromView.haveAccountTap
+///                 .sink { [navigator] in navigator.next(.userPressedHaveAccount) }
 ///
-///         input.fromView.signUpTap
-///             .flatMapLatest { [api] _ in api.signUp().replaceErrorWithEmpty() }
-///             .sink { [navigator] user in navigator.next(.signedUp(user)) }
-///             .store(in: &cancellables)
-///         // …
+///             input.fromView.signUpTap
+///                 .flatMapLatest { [api] _ in api.signUp().replaceErrorWithEmpty() }
+///                 .sink { [navigator] user in navigator.next(.signedUp(user)) }
+///         }
 ///     }
 /// }
 ///

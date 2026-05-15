@@ -24,12 +24,16 @@ import UIKit
 /// ## Example — dynamic bar-button content driven by a publisher
 ///
 /// ```swift
-/// final class EditProfileViewModel: BaseViewModel<…> {
-///     override func transform(input: Input) -> Output<Publishers> {
+/// final class EditProfileViewModel: AbstractViewModel<…, EditProfileStep> {
+///     override func transform(input: Input) -> Output<Publishers, EditProfileStep> {
+///         let navigator = Navigator<EditProfileStep>()
 ///         let canSave = input.fromView.firstName.combineLatest(input.fromView.lastName)
 ///             .map { !$0.isEmpty && !$1.isEmpty }
 ///
-///         return Output(publishers: Publishers(/* … */)) {
+///         return Output(
+///             publishers: Publishers(/* … */),
+///             navigation: navigator.navigation
+///         ) {
 ///             // Update the right bar button's enabled-ness via dynamic content.
 ///             canSave
 ///                 .map { enabled in

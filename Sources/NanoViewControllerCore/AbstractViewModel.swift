@@ -11,25 +11,85 @@ import Foundation
 ///   * an open `transform(input:)` method that traps if not overridden — so
 ///     forgetting to override surfaces immediately at runtime.
 ///
-/// Subscriptions started inside `transform` are returned in the resulting
-/// ``Output`` and stored by ``SceneController`` for the lifetime of the
-/// scene — `AbstractViewModel` does **not** carry a `cancellables` bag.
+/// Subscriptions started inside `transform`, plus the navigation publisher,
+/// are returned in the resulting ``Output`` and consumed by
+/// ``SceneController`` for the lifetime of the scene — `AbstractViewModel`
+/// does **not** carry a `cancellables` bag or a stored `navigator`.
 ///
-/// The class is generic over three slots:
+/// The class is generic over four slots:
 ///
 ///   * `FromView` — the view-driven publisher struct the View exposes.
 ///   * `FromController` — the controller-driven channel; usually
-///     ``InputFromController`` (and that's what ``BaseViewModel`` pins).
+///     ``InputFromController``.
 ///   * `Publishers` — the publisher bag returned to the view.
+///   * `NavigationStep` — the enum of navigation transitions; use `Never`
+///     for scenes that emit none.
 ///
-/// Most consumers should subclass ``BaseViewModel`` instead — that variant
-/// fixes `FromController` to ``InputFromController`` and adds a typed
-/// `Navigator<Step>`, which is what 99% of scenes need. Subclass
-/// `AbstractViewModel` directly only when you need a non-standard
-/// `FromController` (e.g. a view that doesn't run on a ``SceneController`` at
-/// all and uses ``NoControllerInput``).
+/// There is no longer a separate `BaseViewModel` convenience subclass; the
+/// `InputFromController` pin and the `NavigationStep` slot are both expressed
+/// directly via the four generic parameters.
 ///
-/// ## Example — a screen-less ViewModel for a self-contained view
+/// ## Example — a sign-up ViewModel with navigation
+///
+/// ```swift
+/// import Combine
+/// import NanoViewControllerController     // for InputFromController
+/// import NanoViewControllerCore
+/// import NanoViewControllerNavigation     // for Navigator
+///
+/// enum SignUpStep: Sendable { case signedUp(User) }
+///
+/// struct SignUpInputFromView {
+///     let username:     AnyPublisher<String, Never>
+///     let password:     AnyPublisher<String, Never>
+///     let signUpTapped: AnyPublisher<Void, Never>
+/// }
+///
+/// final class SignUpViewModel: AbstractViewModel<
+///     SignUpInputFromView,
+///     InputFromController,
+///     SignUpViewModel.Publishers,
+///     SignUpStep
+/// > {
+///     private let service: SignUpServicing
+///     init(service: SignUpServicing) { self.service = service; super.init() }
+/// }
+///
+/// extension SignUpViewModel {
+///     struct Publishers {
+///         let isSignUpEnabled: AnyPublisher<Bool, Never>
+///         let isLoading:       AnyPublisher<Bool, Never>
+///     }
+/// }
+///
+/// extension SignUpViewModel {
+///     override func transform(input: Input) -> Output<Publishers, SignUpStep> {
+///         let navigator = Navigator<SignUpStep>()
+///         let activity  = ActivityIndicator()
+///
+///         let credentials = input.fromView.username.combineLatest(input.fromView.password)
+///         let isValid = credentials.map { !$0.isEmpty && $1.count >= 8 }
+///
+///         return Output(
+///             publishers: Publishers(
+///                 isSignUpEnabled: isValid.eraseToAnyPublisher(),
+///                 isLoading:       activity.asPublisher()
+///             ),
+///             navigation: navigator.navigation
+///         ) {
+///             input.fromView.signUpTapped
+///                 .withLatestFrom(credentials)
+///                 .map { [service] u, p in
+///                     service.signUp(username: u, password: p).trackActivity(activity)
+///                 }
+///                 .switchToLatest()
+///                 .sink { [navigator] user in navigator.next(.signedUp(user)) }
+///         }
+///     }
+/// }
+/// ```
+///
+/// ## Example — a screen-less ViewModel (no navigation, no controller)
 ///
 /// ```swift
 /// import Combine
@@ -42,13 +102,15 @@ import Foundation
 /// }
 ///
 /// /// No SceneController in play — this view is embedded inside another screen.
-/// /// We use NoControllerInput as the controller channel.
+/// /// We use NoControllerInput as the controller channel and `Never` for
+/// /// NavigationStep so the convenience init on `Output` applies.
 /// final class CounterViewModel: AbstractViewModel<
 ///     CounterInputFromView,
 ///     NoControllerInput,
-///     CounterViewModel.Publishers
+///     CounterViewModel.Publishers,
+///     Never
 /// > {
-///     override func transform(input: Input) -> Output<Publishers> {
+///     override func transform(input: Input) -> Output<Publishers, Never> {
 ///         let count = Publishers.Merge(
 ///             input.fromView.increment.map { +1 },
 ///             input.fromView.decrement.map { -1 }
@@ -65,30 +127,10 @@ import Foundation
 /// }
 ///
 /// extension CounterViewModel {
-///     /// Bindings back to UILabel/UIButton in the view.
 ///     struct Publishers {
 ///         let countText: AnyPublisher<String, Never>
 ///     }
 /// }
-/// ```
-///
-/// In tests you can drive the ViewModel without any UIKit:
-///
-/// ```swift
-/// let inc = PassthroughSubject<Void, Never>()
-/// let dec = PassthroughSubject<Void, Never>()
-/// let vm  = CounterViewModel()
-/// let output = vm.transform(input: CounterViewModel.Input(
-///     fromView:       CounterInputFromView(increment: inc.eraseToAnyPublisher(),
-///                                          decrement: dec.eraseToAnyPublisher()),
-///     fromController: NoControllerInput()
-/// ))
-/// var bag: [AnyCancellable] = output.cancellables
-/// var collected: [String] = []
-/// output.publishers.countText.sink { collected.append($0) }.store(in: &bag)
-///
-/// inc.send(()); inc.send(()); dec.send(())
-/// XCTAssertEqual(collected, ["0", "1", "2", "1"])
 /// ```
 ///
 /// `@MainActor` because it conforms to ``ViewModelType``, which is itself
@@ -96,9 +138,14 @@ import Foundation
 /// they're owned by `SceneController` (a `UIViewController` subclass) and
 /// their `transform(input:)` runs on the main actor.
 @MainActor
-open class AbstractViewModel<FromView, FromController, Publishers>: ViewModelType {
-    /// The concrete ``InputType`` Swift synthesizes for each `AbstractViewModel`
-    /// specialisation.
+open class AbstractViewModel<
+    FromView,
+    FromController,
+    Publishers,
+    NavigationStep: Sendable
+>: ViewModelType {
+    /// The concrete ``InputType`` Swift synthesizes for each
+    /// `AbstractViewModel` specialisation.
     ///
     /// `SceneController` constructs this struct by combining the View's
     /// `inputFromView` with the lifecycle-derived ``InputFromController`` it
@@ -131,9 +178,9 @@ open class AbstractViewModel<FromView, FromController, Publishers>: ViewModelTyp
     /// value (which would break scene wiring further down the line).
     ///
     /// - Parameter input: The pre-stitched ``Input`` with both channels.
-    /// - Returns: An ``Output`` wrapping the publisher bag and the
-    ///   subscriptions started inside `transform`.
-    open func transform(input _: Input) -> Output<Publishers> {
+    /// - Returns: An ``Output`` wrapping the publisher bag, the navigation
+    ///   publisher, and the subscriptions started inside `transform`.
+    open func transform(input _: Input) -> Output<Publishers, NavigationStep> {
         abstract
     }
 }

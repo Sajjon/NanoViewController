@@ -5,6 +5,7 @@ import Foundation
 import NanoViewControllerCombine
 import NanoViewControllerController
 import NanoViewControllerCore
+import NanoViewControllerNavigation
 
 /// User outcomes the SignUp scene can emit. The coordinator subscribes and
 /// decides what happens next (here: `signedUp(_:)` advances to Home).
@@ -53,11 +54,13 @@ public extension SignUpViewModel.Publishers {
 
 /// Drives `SignUpView`: validates the (very loose) name + email rules,
 /// gates the submit button, and on tap calls the injected service. The
-/// returned user is forwarded as `.signedUp` to the parent coordinator.
-public final class SignUpViewModel: BaseViewModel<
-    SignUpUserAction,
+/// returned user is forwarded as `.signedUp` via the navigation publisher
+/// exposed in `Output`, which the coordinator subscribes to.
+public final class SignUpViewModel: AbstractViewModel<
     SignUpViewModel.InputFromView,
-    SignUpViewModel.Publishers
+    InputFromController,
+    SignUpViewModel.Publishers,
+    SignUpUserAction
 > {
 	private let service: SignUpServicing
 
@@ -66,8 +69,13 @@ public final class SignUpViewModel: BaseViewModel<
 		super.init()
 	}
 
-	// MARK: BaseViewModel Overrides
-    override public func transform(input: Input) -> Output<Publishers> {
+	// MARK: AbstractViewModel Overrides
+    override public func transform(input: Input) -> Output<Publishers, SignUpUserAction> {
+        // Local navigator — constructed inside transform so the VM itself
+        // carries no stored state. The SceneController retains it via the
+        // cancellables/publisher capture inside Output.
+        let navigator = Navigator<SignUpUserAction>()
+
         // Track the in-flight state of the sign-up call so the view can show
         // a spinner and disable the submit button while waiting.
         let activity = ActivityIndicator()
@@ -94,7 +102,8 @@ public final class SignUpViewModel: BaseViewModel<
             publishers: Publishers(
                 isSubmitEnabled: isSubmitEnabled,
                 isLoading: isLoading
-            )
+            ),
+            navigation: navigator.navigation
         ) {
             // On submit-tap: snapshot the latest (name, email), call the service
             // (tracking activity), forward the resulting user as `.signedUp`.

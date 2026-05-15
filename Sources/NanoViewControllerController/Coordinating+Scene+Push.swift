@@ -2,6 +2,7 @@
 
 import Combine
 import NanoViewControllerCombine
+import NanoViewControllerCore
 import NanoViewControllerNavigation
 import UIKit
 
@@ -48,7 +49,7 @@ public extension Coordinating {
         animated: Bool = true,
         navigationPresentationCompletion: Completion? = nil,
         navigationHandler: @escaping (_ step: V.ViewModel.NavigationStep) -> Void
-    ) where V.ViewModel: Navigating {
+    ) {
         let scene = S(viewModel: viewModel)
         pushSceneInstance(
             scene,
@@ -59,7 +60,7 @@ public extension Coordinating {
     }
 
     /// Pushes `scene` onto the navigation stack (or sets it as the root if the
-    /// stack is empty) and subscribes to its view-model navigator so
+    /// stack is empty) and subscribes to its navigation publisher so
     /// coordinator logic can react to user actions and decide when to
     /// advance/pop.
     ///
@@ -71,24 +72,22 @@ public extension Coordinating {
     ///   - navigationPresentationCompletion: Fires after the push transition.
     ///   - navigationHandler: Pattern-match on `V.ViewModel.NavigationStep`
     ///     and route each case.
-    func pushSceneInstance<V: ContentView>(
-        _ scene: some Scene<V>,
+    func pushSceneInstance<S: Scene<V>, V: ContentView>(
+        _ scene: S,
         animated: Bool = true,
         navigationPresentationCompletion: Completion? = nil,
         navigationHandler: @escaping (_ step: V.ViewModel.NavigationStep) -> Void
-    ) where V.ViewModel: Navigating {
-        let viewModel = scene.viewModel
-
+    ) {
         navigationController.setRootViewControllerIfEmptyElsePush(
             viewController: scene,
             animated: animated,
             completion: navigationPresentationCompletion
         )
 
-        // Forward navigation steps from the view-model to the caller's handler.
+        // Forward navigation steps from the scene to the caller's handler.
         // The handler closes over coordinator state and decides whether to push
         // another scene, present a modal, or finish the flow.
-        viewModel.navigator.navigation
+        scene.navigation
             .sinkOnMain { navigationHandler($0) }
             .store(in: &cancellables)
     }

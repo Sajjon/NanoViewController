@@ -7,19 +7,19 @@ import XCTest
 /// Tests for `AbstractViewModel` — the generic base class every concrete
 /// ViewModel inherits from. Covers the synthesised `Input` struct, and
 /// verifies that subclassing + overriding `transform` produces an ``Output``
-/// carrying both the publisher bag and any subscriptions started inside
-/// `transform`.
+/// carrying the publisher bag, the navigation publisher, and the
+/// subscriptions started inside `transform`.
 @MainActor
 final class AbstractViewModelTests: XCTestCase {
     private struct FromView { let tap: AnyPublisher<Void, Never> }
     private struct FromController { let viewDidAppear: AnyPublisher<Void, Never> }
     private struct Publishers { let title: AnyPublisher<String, Never> }
 
-    private final class StubViewModel: AbstractViewModel<FromView, FromController, Publishers> {
+    private final class StubViewModel: AbstractViewModel<FromView, FromController, Publishers, Never> {
         private(set) var transformCalls = 0
         // Mutating side-effect counter that proves the subscription block ran.
         private(set) var sideEffectCalls = 0
-        override func transform(input: Input) -> Output<Publishers> {
+        override func transform(input: Input) -> Output<Publishers, Never> {
             transformCalls += 1
             // Use both channels so the synthesised stitching is genuinely
             // exercised by the test, not just the storage.
@@ -64,8 +64,9 @@ final class AbstractViewModelTests: XCTestCase {
 
         // ACT
         let output = vm.transform(input: input)
-        // Output carries both the publisher bag and the subscriptions
-        // started inside transform — retain both for the test's lifetime.
+        // Output carries the publisher bag, the navigation publisher, and the
+        // subscriptions started inside transform — retain everything for the
+        // test's lifetime.
         bag.append(contentsOf: output.cancellables)
         output.publishers.title.sink { received.append($0) }.store(in: &bag)
         tap.send(())
@@ -81,8 +82,8 @@ final class AbstractViewModelTests: XCTestCase {
 
     func test_transform_withNoSubscriptions_returnsEmptyCancellables() {
         // ARRANGE
-        final class NoSideEffectVM: AbstractViewModel<FromView, FromController, Publishers> {
-            override func transform(input: Input) -> Output<Publishers> {
+        final class NoSideEffectVM: AbstractViewModel<FromView, FromController, Publishers, Never> {
+            override func transform(input: Input) -> Output<Publishers, Never> {
                 Output(publishers: Publishers(title: input.fromView.tap.map { "x" }.eraseToAnyPublisher()))
             }
         }
@@ -97,5 +98,38 @@ final class AbstractViewModelTests: XCTestCase {
 
         // ASSERT
         XCTAssertTrue(output.cancellables.isEmpty)
+    }
+
+    func test_transform_withNavigation_emitsThroughOutputChannel() {
+        // ARRANGE
+        enum Step: Sendable { case finished }
+        final class NavigatingVM: AbstractViewModel<FromView, FromController, Publishers, Step> {
+            override func transform(input: Input) -> Output<Publishers, Step> {
+                let nav = PassthroughSubject<Step, Never>()
+                return Output(
+                    publishers: Publishers(title: Empty().eraseToAnyPublisher()),
+                    navigation: nav.eraseToAnyPublisher()
+                ) {
+                    input.fromView.tap.sink { nav.send(.finished) }
+                }
+            }
+        }
+        let vm = NavigatingVM()
+        let tap = PassthroughSubject<Void, Never>()
+        let input = NavigatingVM.Input(
+            fromView: FromView(tap: tap.eraseToAnyPublisher()),
+            fromController: FromController(viewDidAppear: Empty().eraseToAnyPublisher())
+        )
+        var bag: [AnyCancellable] = []
+        var steps: [Step] = []
+
+        // ACT
+        let output = vm.transform(input: input)
+        bag.append(contentsOf: output.cancellables)
+        output.navigation.sink { steps.append($0) }.store(in: &bag)
+        tap.send(())
+
+        // ASSERT
+        XCTAssertEqual(steps.count, 1)
     }
 }

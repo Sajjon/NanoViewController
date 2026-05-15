@@ -56,17 +56,18 @@ public extension SignUpViewModel {
 }
 
 // MARK: SignUpViewModel
-public final class SignUpViewModel: BaseViewModel<
-    SignUpUserAction, // NavigationStep
+public final class SignUpViewModel: AbstractViewModel<
     SignUpViewModel.InputFromView,
-    SignUpViewModel.Publishers
+    InputFromController,
+    SignUpViewModel.Publishers,
+    SignUpUserAction // NavigationStep
 > {
 	private let service: SignUpServicing
-	/* BaseViewModel declares `public let navigator = Navigator<NavigationStep>()` */
 
-	// MARK: BaseViewModel Overrides
-    override public func transform(input: Input) -> Output<Publishers> {
-        let activity = ActivityIndicator()
+	// MARK: AbstractViewModel Overrides
+    override public func transform(input: Input) -> Output<Publishers, SignUpUserAction> {
+        let navigator = Navigator<SignUpUserAction>()  // local — VM holds no state
+        let activity  = ActivityIndicator()
 
         // Name + email both non-empty → form is valid.
         let isFormValid: AnyPublisher<Bool, Never> = input.fromView.name
@@ -90,7 +91,8 @@ public final class SignUpViewModel: BaseViewModel<
             publishers: Publishers(
                 isSubmitEnabled: isSubmitEnabled,
                 isLoading: isLoading
-            )
+            ),
+            navigation: navigator.navigation
         ) {
             // On submit-tap: snapshot the latest (name, email), call the service
             // (tracking activity), forward the resulting user as `.signedUp`.
@@ -162,7 +164,7 @@ just example-build   # xcodebuild for iPhone 17 simulator
 open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
 ```
 
-The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `BaseViewModel<NavigationStep, InputFromView, Output>` (which fixes `FromController` to `InputFromController` and provides a `Navigator<Step>`), coordinator subscribes to that navigator and routes the user-actions to push / pop / present transitions. 
+The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `AbstractViewModel<InputFromView, InputFromController, Publishers, NavigationStep>`, declares a local `Navigator<Step>` inside `transform` and surfaces it on the returned `Output<Publishers, Step>`. The coordinator subscribes to that publisher (via the hosting scene's `.navigation`) and routes the user-actions to push / pop / present transitions. 
 
 ## Zhip (real-world iOS wallet)
 

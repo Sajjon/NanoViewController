@@ -72,6 +72,23 @@ open class SceneController<View: ContentView>: AbstractController
     /// The ViewModel injected by the coordinator at construction time.
     public let viewModel: ViewModel
 
+    /// The navigation stream produced by `viewModel.transform(input:)`.
+    ///
+    /// Set during `bindViewToViewModel` (which runs eagerly from the
+    /// designated init, before the controller is handed back to the
+    /// coordinator). Coordinators subscribe to it via the typed
+    /// ``navigation`` accessor below.
+    private var transformedNavigation: AnyPublisher<ViewModel.NavigationStep, Never>!
+
+    /// The navigation publisher the coordinator subscribes to.
+    ///
+    /// Lazily exposed (never re-emits — it's a stable handle on the stream
+    /// produced by `transform`). Use this from coordinator hookup code
+    /// instead of reaching into the ViewModel.
+    public var navigation: AnyPublisher<ViewModel.NavigationStep, Never> {
+        transformedNavigation
+    }
+
     /// Clock used to auto-dismiss toasts emitted via
     /// ``InputFromController/toastSubject``.
     ///
@@ -285,6 +302,13 @@ private extension SceneController {
 
         output.cancellables.forEach { $0.store(in: &cancellables) }
         rootContentView.populate(with: output.publishers).forEach { $0.store(in: &cancellables) }
+
+        // Expose the navigation publisher for the coordinator to subscribe
+        // to via `scene.navigation`. The publisher itself lives as long as
+        // the closures stored in `output.cancellables` keep its upstream
+        // (typically a `Navigator` instance constructed inside `transform`)
+        // alive.
+        transformedNavigation = output.navigation
     }
 
     /// Drives ``NavigationBarLayoutingNavigationController`` to apply the

@@ -4,47 +4,55 @@ import Foundation
 
 /// The central contract every ViewModel conforms to.
 ///
-/// A ViewModel in NanoViewController is a *pure* `Input → Output<Publishers>`
-/// transformation: it holds no mutable subscription state, and it produces all
-/// of its outputs as Combine publishers. The flow is:
+/// A ViewModel in NanoViewController is a *pure*
+/// `Input → Output<Publishers, NavigationStep>` transformation: it holds no
+/// mutable state, produces all of its outputs as Combine publishers, and
+/// carries its navigation channel as part of the return value rather than as a
+/// stored property. The flow is:
 ///
 /// 1. ``SceneController`` collects `inputFromView` from the root content view.
 /// 2. ``SceneController`` builds ``InputFromController`` from its own lifecycle.
 /// 3. ``SceneController`` stitches the two into a single `Input` value and calls
 ///    ``transform(input:)``.
-/// 4. The ViewModel returns an ``Output`` containing the `Publishers` bag and
-///    every subscription started inside `transform`.
-/// 5. ``SceneController`` retains the cancellables and forwards `publishers`
-///    to the view's `populate(with:)`.
+/// 4. The ViewModel returns an ``Output`` carrying:
+///       * `publishers`     — the bag the view binds in `populate(with:)`,
+///       * `navigation`     — the stream the coordinator subscribes to,
+///       * `cancellables`   — every subscription started inside `transform`.
+/// 5. ``SceneController`` retains the cancellables, exposes `navigation` for
+///    the coordinator, and forwards `publishers` to the view's `populate`.
 ///
 /// ## Why "pure" transform?
 ///
 /// All stateful side effects (timers, network calls, navigation pulses) are
-/// launched *inside* `transform` and returned in the ``Output/cancellables``
-/// array. The ViewModel itself has no mutable bag, no lifecycle methods to
-/// mock — drive it in tests by constructing an `Input` from
-/// `PassthroughSubject`s and asserting on the publishers in the returned
-/// ``Output/publishers``.
+/// constructed *inside* `transform`. The ViewModel itself has no mutable bag,
+/// no stored `navigator`, no lifecycle methods to mock — drive it in tests by
+/// constructing an `Input` from `PassthroughSubject`s and asserting on the
+/// publishers in the returned ``Output``.
 ///
 /// ## Example — minimal sign-up ViewModel
 ///
 /// ```swift
 /// import Combine
 /// import NanoViewControllerCore
-/// import NanoViewControllerController     // for InputFromController + BaseViewModel
+/// import NanoViewControllerController     // for InputFromController
 /// import NanoViewControllerNavigation     // for Navigator
 ///
 /// /// What the user can do on the sign-up screen.
 /// struct SignUpInputFromView {
-///     let username: AnyPublisher<String, Never>      // text field text
-///     let password: AnyPublisher<String, Never>      // text field text
-///     let signUpTapped: AnyPublisher<Void, Never>    // primary button tap
+///     let username: AnyPublisher<String, Never>
+///     let password: AnyPublisher<String, Never>
+///     let signUpTapped: AnyPublisher<Void, Never>
 /// }
 ///
 /// /// Where the coordinator listens for "what should happen next".
-/// enum SignUpStep { case signedUp(User) }
+/// enum SignUpStep: Sendable { case signedUp(User) }
 ///
-/// final class SignUpViewModel: BaseViewModel<SignUpStep, SignUpInputFromView, SignUpViewModel.Publishers> {
+/// final class SignUpViewModel: AbstractViewModel<
+///     SignUpInputFromView,
+///     InputFromController,
+///     SignUpViewModel.Publishers,
+///     SignUpStep
+/// > {
 ///     private let service: SignUpServicing
 ///     init(service: SignUpServicing) { self.service = service; super.init() }
 /// }
@@ -54,14 +62,13 @@ import Foundation
 ///     struct Publishers {
 ///         let isSignUpEnabled: AnyPublisher<Bool, Never>
 ///         let isLoading:       AnyPublisher<Bool, Never>
-///         let errorMessage:    AnyPublisher<String, Never>
 ///     }
 /// }
 ///
 /// extension SignUpViewModel {
-///     override func transform(input: Input) -> Output<Publishers> {
-///         let activity = ActivityIndicator()
-///         let errors   = ErrorTracker()
+///     override func transform(input: Input) -> Output<Publishers, SignUpStep> {
+///         let navigator = Navigator<SignUpStep>()
+///         let activity  = ActivityIndicator()
 ///
 ///         let credentials = input.fromView.username.combineLatest(input.fromView.password)
 ///         let isValid = credentials.map { !$0.isEmpty && $1.count >= 8 }
@@ -69,17 +76,14 @@ import Foundation
 ///         return Output(
 ///             publishers: Publishers(
 ///                 isSignUpEnabled: isValid.eraseToAnyPublisher(),
-///                 isLoading:       activity.asPublisher(),
-///                 errorMessage:    errors.asPublisher().map(\.localizedDescription).eraseToAnyPublisher()
-///             )
+///                 isLoading:       activity.asPublisher()
+///             ),
+///             navigation: navigator.navigation
 ///         ) {
 ///             input.fromView.signUpTapped
 ///                 .withLatestFrom(credentials)
 ///                 .map { [service] u, p in
-///                     service.signUp(username: u, password: p)
-///                         .trackActivity(activity)
-///                         .trackError(errors)
-///                         .replaceErrorWithEmpty()
+///                     service.signUp(username: u, password: p).trackActivity(activity)
 ///                 }
 ///                 .switchToLatest()
 ///                 .sink { [navigator] user in navigator.next(.signedUp(user)) }
@@ -88,9 +92,9 @@ import Foundation
 /// }
 /// ```
 ///
-/// The view binds the three publishers in `populate(with:)` (see
-/// ``ViewModelled``). The coordinator subscribes to
-/// `viewModel.navigator.navigation` and routes `.signedUp(user)` to whatever
+/// The view binds the publishers in `populate(with:)` (see ``ViewModelled``).
+/// The coordinator subscribes to the navigation publisher exposed by the
+/// hosting ``SceneController`` and routes `.signedUp(user)` to whatever
 /// transition makes sense.
 ///
 /// `@MainActor` because every concrete ViewModel is constructed by, observed
@@ -111,6 +115,10 @@ public protocol ViewModelType {
     /// concrete ViewModel, with one publisher per UI control the view drives.
     associatedtype Publishers
 
+    /// The enum of navigation steps this scene emits. `Never` for scenes
+    /// that don't emit navigation (e.g. fully self-contained leaf views).
+    associatedtype NavigationStep: Sendable
+
     /// Runs the ViewModel's business logic.
     ///
     /// Called exactly once per instance, typically by ``SceneController``
@@ -118,13 +126,17 @@ public protocol ViewModelType {
     ///
     ///   * Wire `input.fromView` and `input.fromController` publishers into
     ///     business-logic publishers.
+    ///   * Construct a local `Navigator<NavigationStep>` (or
+    ///     `PassthroughSubject<NavigationStep, Never>`) for the navigation
+    ///     channel and pass its publisher into the returned ``Output``.
     ///   * Return an ``Output`` whose `publishers:` field holds the
-    ///     ``Publishers`` value and whose `subscriptions:` builder block
+    ///     ``Publishers`` value, whose `navigation:` field holds the
+    ///     navigation publisher, and whose `subscriptions:` builder block
     ///     contains every side-effect `.sink { … }` the view-model starts.
     ///
     /// - Parameter input: A pre-stitched `Input` containing both the
     ///   user-driven publishers and the controller-driven publishers.
-    /// - Returns: An ``Output`` wrapping the publisher bag and the
-    ///   subscriptions started inside `transform`.
-    func transform(input: Input) -> Output<Publishers>
+    /// - Returns: An ``Output`` wrapping the publisher bag, the navigation
+    ///   publisher, and every subscription started inside `transform`.
+    func transform(input: Input) -> Output<Publishers, NavigationStep>
 }

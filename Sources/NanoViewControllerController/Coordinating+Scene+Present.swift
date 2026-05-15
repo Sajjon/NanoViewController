@@ -2,6 +2,7 @@
 
 import Combine
 import NanoViewControllerCombine
+import NanoViewControllerCore
 import NanoViewControllerNavigation
 import UIKit
 
@@ -36,7 +37,7 @@ public extension Coordinating {
         animated: Bool = true,
         presentationCompletion: Completion? = nil,
         navigationHandler: @escaping NavigationHandlerModalScene<V.ViewModel>
-    ) where V.ViewModel: Navigating {
+    ) {
         let scene = S(viewModel: viewModel)
         modallyPresent(
             scene: scene,
@@ -61,21 +62,20 @@ public extension Coordinating {
     ///   - presentationCompletion: Fires after presentation completes.
     ///   - navigationHandler: Step-handling closure. Use the trailing
     ///     ``DismissScene`` to dismiss.
-    func modallyPresent<V: ContentView>(
-        scene: some Scene<V>,
+    func modallyPresent<S: Scene<V>, V: ContentView>(
+        scene: S,
         animated: Bool = true,
         presentationCompletion: Completion? = nil,
         navigationHandler: @escaping NavigationHandlerModalScene<V.ViewModel>
-    ) where V.ViewModel: Navigating {
-        let viewModel = scene.viewModel
+    ) {
         // Wrap in a nav controller so the modal sheet has its own navigation
         // bar (and our shared layout owner machinery still works).
         let viewControllerToPresent = NavigationBarLayoutingNavigationController(rootViewController: scene)
         navigationController.present(viewControllerToPresent, animated: animated, completion: presentationCompletion)
 
-        // Bridge the view-model's navigation pulses to the caller's handler,
+        // Bridge the scene's navigation pulses to the caller's handler,
         // handing the handler a closure it can call to dismiss this modal.
-        viewModel.navigator.navigation
+        scene.navigation
             .sinkOnMain { [weak scene] step in
                 navigationHandler(step) { animated, navigationCompletion in
                     scene?.dismiss(animated: animated, completion: navigationCompletion)
