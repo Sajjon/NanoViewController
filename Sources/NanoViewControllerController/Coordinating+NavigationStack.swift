@@ -5,7 +5,7 @@ import UIKit
 
 public extension Coordinating {
     /// Returns `true` iff the navigation stack's topmost view controller is
-    /// an instance of `Scene`.
+    /// an instance of the supplied view-controller type.
     ///
     /// Used by handlers that need to make sure they're reacting to navigation
     /// only when they are the active scene (e.g. avoiding double-pushes from
@@ -22,10 +22,10 @@ public extension Coordinating {
     /// ```
     ///
     /// - Parameter scene: The scene type to test for. Phantom-arg only —
-    ///   only `Scene.self` is read.
-    /// - Returns: `true` if `navigationController.topViewController is Scene`.
-    func isTopmost<Scene: UIViewController>(scene _: Scene.Type) -> Bool {
-        guard navigationController.topViewController is Scene else { return false }
+    ///   only `ViewController.self` is read.
+    /// - Returns: `true` if `navigationController.topViewController is ViewController`.
+    func isTopmost<ViewController: UIViewController>(scene _: ViewController.Type) -> Bool {
+        guard navigationController.topViewController is ViewController else { return false }
         return true
     }
 }

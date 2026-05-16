@@ -38,7 +38,7 @@ public final class NavigationBarLayoutingNavigationController: UINavigationContr
 
     // MARK: - Overridden Methods
 
-    /// Re-applies the top scene's layout when the nav controller itself
+    /// Re-applies the top controller's layout when the nav controller itself
     /// reappears (e.g. after a modal dismissal), and installs `self` as the
     /// gesture-recognizer delegate so the swipe-back recognizer can coexist
     /// with custom gestures.
@@ -48,7 +48,7 @@ public final class NavigationBarLayoutingNavigationController: UINavigationContr
         interactivePopGestureRecognizer?.delegate = self
     }
 
-    /// Applies the *destination* scene's layout *before* the push runs, so
+    /// Applies the *destination* controller's layout *before* the push runs, so
     /// the bar already has the right look when the animation starts (no
     /// mid-transition flicker).
     override public func pushViewController(_ viewController: UIViewController, animated: Bool) {
@@ -106,12 +106,12 @@ public extension NavigationBarLayoutingNavigationController {
     ///
     /// No-op if the VC doesn't configure a layout — the previous layout stays.
     /// This is what lets a non-conforming controller "inherit" the previous
-    /// scene's bar styling: no override means no change.
+    /// controller's bar styling: no override means no change.
     ///
     /// - Parameter viewController: The candidate VC. May be nil after a pop.
     func applyLayoutToViewController(_ viewController: UIViewController?) {
         guard
-            let viewController = viewController as? AnyNanoViewController,
+            let viewController = viewController as? ControllerConfigReadable,
             let navigationBarLayout = viewController.controllerConfig.navigationBarLayout
         else {
             return

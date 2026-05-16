@@ -7,12 +7,12 @@ import NanoViewControllerNavigation
 import UIKit
 
 public extension Coordinating {
-    /// Convenience overload: builds the `Scene` from its type + view-model
+    /// Convenience overload: builds the `NanoViewController` from its type + view-model
     /// and forwards to ``pushSceneInstance(_:animated:navigationPresentationCompletion:navigationHandler:)``.
     ///
     /// This is the single line of code most coordinators use per screen.
     ///
-    /// ## Example — push a sign-up scene and route its steps
+    /// ## Example — push a sign-up controller and route its steps
     ///
     /// ```swift
     /// final class OnboardingCoordinator: BaseCoordinator<OnboardingStep> {
@@ -37,7 +37,7 @@ public extension Coordinating {
     /// ```
     ///
     /// - Parameters:
-    ///   - scene: The scene type. Constructed via `S(viewModel: viewModel)`.
+    ///   - scene: The controller type. Constructed via `S(viewModel: viewModel)`.
     ///   - viewModel: The ViewModel to inject.
     ///   - animated: Animate the push.
     ///   - navigationPresentationCompletion: Fires after the push transition.
@@ -64,10 +64,10 @@ public extension Coordinating {
     /// coordinator logic can react to user actions and decide when to
     /// advance/pop.
     ///
-    /// Use the overload above unless you already have a scene instance.
+    /// Use the overload above unless you already have a controller instance.
     ///
     /// - Parameters:
-    ///   - scene: A pre-built scene instance.
+    ///   - scene: A pre-built controller instance.
     ///   - animated: Animate the push.
     ///   - navigationPresentationCompletion: Fires after the push transition.
     ///   - navigationHandler: Pattern-match on `V.ViewModel.NavigationStep`

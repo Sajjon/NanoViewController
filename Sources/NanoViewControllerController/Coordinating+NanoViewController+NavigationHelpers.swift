@@ -6,7 +6,7 @@ import NanoViewControllerCore
 import NanoViewControllerNavigation
 
 extension Coordinating {
-    /// Subscribes the coordinator to the scene's navigation publisher and
+    /// Subscribes the coordinator to the controller's navigation publisher and
     /// stores the resulting cancellable on the coordinator's bag.
     ///
     /// Used by the push-style hookup in
@@ -20,14 +20,14 @@ extension Coordinating {
             .store(in: &cancellables)
     }
 
-    /// Subscribes the coordinator to the scene's navigation publisher and
+    /// Subscribes the coordinator to the controller's navigation publisher and
     /// hands the caller's handler a `DismissScene` callback that dismisses
-    /// the scene with optional animation. Used by the modal-style hookups in
+    /// the controller with optional animation. Used by the modal-style hookups in
     /// ``Coordinating/modallyPresent(scene:animated:presentationCompletion:navigationHandler:)``
     /// and ``Coordinating/replaceAllScenes(with:animated:whenReplacingFinished:navigationHandler:)``.
     func subscribeToModalNavigation<S: NanoViewController<V>, V: ContentView>(
         of scene: S,
-        handler: @escaping NavigationHandlerModalScene<V.ViewModel>
+        handler: @escaping ModalNavigationHandler<V.ViewModel>
     ) {
         scene.navigation
             .sinkOnMain { [weak scene] step in

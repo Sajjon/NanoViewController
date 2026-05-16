@@ -4,7 +4,7 @@ import Combine
 import NanoViewControllerCombine
 import NanoViewControllerCore
 
-/// The contract every scene's root `UIView` implements to participate in the
+/// The contract every controller's root `UIView` implements to participate in the
 /// reactive MVVM pipeline.
 ///
 /// A `ViewModelled` view exposes its user-driven publishers as

@@ -120,7 +120,7 @@ open class NanoViewController<View: ContentView>: UIViewController {
 
     /// Instance-level chrome configuration.
     ///
-    /// Override this when a scene's chrome depends on construction-time state.
+    /// Override this when a controller's chrome depends on construction-time state.
     /// Otherwise conform the concrete subclass to ``ControllerConfigProviding``
     /// and declare a `static let config`.
     open var controllerConfig: ControllerConfig {
@@ -329,7 +329,7 @@ private extension NanoViewController {
     /// Logic ladder:
     ///   1. No nav controller? Nothing to do.
     ///   2. Nav controller is the wrong class? Programmer error — crash loudly.
-    ///   3. Scene doesn't own a layout? No-op (the previous layout stays).
+    ///   3. Controller doesn't own a layout? No-op (the previous layout stays).
     ///   4. Same layout as last applied? Skip the work (avoid pointless animations).
     ///   5. Otherwise apply the new layout.
     func applyLayoutIfNeeded(_ layout: NavigationBarLayout?) {
@@ -351,8 +351,8 @@ private extension NanoViewController {
 }
 
 @MainActor
-protocol AnyNanoViewController: AnyObject {
+protocol ControllerConfigReadable: AnyObject {
     var controllerConfig: ControllerConfig { get }
 }
 
-extension NanoViewController: AnyNanoViewController {}
+extension NanoViewController: ControllerConfigReadable {}
