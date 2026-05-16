@@ -3,44 +3,49 @@
 import Combine
 import Foundation
 
-/// The controller-lifecycle + write-back surface every ``BaseViewModel``
-/// receives.
+/// The controller-lifecycle + write-back surface every scene-bound ViewModel
+/// receives through `Input.fromController`.
 ///
 /// Publishers (``viewDidLoad``, bar-button triggers) flow **from** the
 /// ``NanoViewController`` **into** the ViewModel. Subjects (``titleSubject``,
 /// ``toastSubject``, etc.) flow the other direction: the ViewModel `send`s
 /// values to drive UI the controller owns.
 ///
-/// ## Example — using all four directions in a single ViewModel
+/// ## Example — using all four directions in a single ViewModel transform
 ///
 /// ```swift
-/// final class HomeViewModel: BaseViewModel<HomeStep, HomeInputFromView, HomeOutput> {
-///     override func transform(input: Input) -> HomeOutput {
+/// final class HomeViewModel: AbstractViewModel<
+///     HomeInputFromView,
+///     HomeViewModel.Publishers,
+///     HomeStep
+/// > {
+///     override func transform(input: Input) -> Output<Publishers, HomeStep> {
+///         let navigator = Navigator<HomeStep>()
+///
 ///         // 1. Lifecycle in: kick off an initial fetch on first appear.
-///         input.fromController.viewWillAppear
+///         let home = input.fromController.viewWillAppear
 ///             .first()
 ///             .flatMapLatest { [api] _ in api.fetchHome().replaceErrorWithEmpty() }
-///             .sink { [weak self] home in self?.applyHome(home) }
-///             .store(in: &cancellables)
+///             .share()
 ///
-///         // 2. Title write-back: change the title each time the user picks a tab.
-///         input.fromView.tabSelected
-///             .map { tab in tab.localizedTitle }
-///             .sink { input.fromController.titleSubject.send($0) }
-///             .store(in: &cancellables)
+///         return Output(
+///             publishers: Publishers(home: home.eraseToAnyPublisher()),
+///             navigation: navigator.navigation
+///         ) {
+///             // 2. Title write-back: change the title each time the user picks a tab.
+///             input.fromView.tabSelected
+///                 .map { tab in tab.localizedTitle }
+///                 .sink { input.fromController.titleSubject.send($0) }
 ///
-///         // 3. Bar-button trigger in: the navigation-bar Edit button was tapped.
-///         input.fromController.rightBarButtonTrigger
-///             .sink { [navigator] in navigator.next(.userTappedEdit) }
-///             .store(in: &cancellables)
+///             // 3. Bar-button trigger in: the navigation-bar Edit button was tapped.
+///             input.fromController.rightBarButtonTrigger
+///                 .sink { [navigator] in navigator.next(.userTappedEdit) }
 ///
-///         // 4. Toast write-back: tell the user when a sync completes.
-///         input.fromView.userTappedSync
-///             .flatMapLatest { [api] _ in api.sync().replaceErrorWithEmpty() }
-///             .sink { input.fromController.toastSubject.send("Synced") }
-///             .store(in: &cancellables)
-///
-///         return HomeOutput(/* … */)
+///             // 4. Toast write-back: tell the user when a sync completes.
+///             input.fromView.userTappedSync
+///                 .flatMapLatest { [api] _ in api.sync().replaceErrorWithEmpty() }
+///                 .sink { input.fromController.toastSubject.send("Synced") }
+///         }
 ///     }
 /// }
 /// ```

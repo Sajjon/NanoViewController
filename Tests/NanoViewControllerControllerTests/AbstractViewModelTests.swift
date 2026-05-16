@@ -11,9 +11,9 @@ import XCTest
 /// ``Output`` carrying the publisher bag, the navigation publisher, and the
 /// subscriptions started inside `transform`.
 ///
-/// `AbstractViewModel` pins `FromController` to ``InputFromController``;
-/// these tests construct a stub `InputFromController` filled with `Empty()`
-/// publishers and `PassthroughSubject`s where the wiring matters.
+/// `AbstractViewModel` uses the standard ``InputFromController`` channel;
+/// these tests construct a stub filled with `Empty()` publishers and
+/// `PassthroughSubject`s where the wiring matters.
 @MainActor
 final class AbstractViewModelTests: XCTestCase {
     private struct FromView { let tap: AnyPublisher<Void, Never> }

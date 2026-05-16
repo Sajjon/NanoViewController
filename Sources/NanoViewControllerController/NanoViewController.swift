@@ -152,8 +152,9 @@ open class NanoViewController<View: ContentView>: UIViewController {
 
     /// Designated initializer.
     ///
-    /// Coordinators call this with a freshly-constructed ViewModel. ``setup()``
-    /// runs eagerly so the View has live publishers before `viewDidLoad`.
+    /// Coordinators call this with a freshly-constructed ViewModel.
+    /// ``bindViewToViewModel()`` runs eagerly so the View has live publishers
+    /// before `viewDidLoad`.
     ///
     /// - Parameter viewModel: The ViewModel for this scene. Owned by the controller.
     public required init(viewModel: ViewModel) {

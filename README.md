@@ -120,10 +120,10 @@ The package ships six independent SPM library targets so consumers can pick exac
 
 | Product | Layer | Notes |
 |---|---|---|
-| `NanoViewControllerCore` | value types | `ViewModelType`, `InputType`, `EmptyInitializable`, `AbstractViewModel`, `AbstractTarget`, `ActivityIndicator`, `ErrorTracker` |
+| `NanoViewControllerCore` | value types | `Output`, `EmptyInitializable`, `AbstractTarget`, `ActivityIndicator`, `ErrorTracker`, `BindingsBuilder` |
 | `NanoViewControllerCombine` | reactive | `Binder`, the `-->` operator, `Publisher+Extras`, `UIControl`/`UITextField`/`UIView` publisher extensions |
 | `NanoViewControllerNavigation` | coordinators | `Coordinating`, `BaseCoordinator`, `Navigator`, `Stepper` |
-| `NanoViewControllerController` | UIKit glue | `NanoViewController<View>`, `ControllerConfig`, `BarButtonContent`, `InputFromController`, `ViewModelled`, `NavigationBarLayoutingNavigationController`, `Toast` |
+| `NanoViewControllerController` | UIKit glue | `NanoViewController<View>`, `AbstractViewModel`, `ViewModelType`, `InputType`, `ControllerConfig`, `BarButtonContent`, `InputFromController`, `ViewModelled`, `NavigationBarLayoutingNavigationController`, `Toast` |
 | `NanoViewControllerSceneViews` | UIKit views | `AbstractSceneView`, `BaseScrollableStackViewOwner`, `BaseTableViewOwner`, `SingleCellTypeTableView`, `CellConfigurable`, pull-to-refresh / class-identifiable / footer plumbing |
 | `NanoViewControllerDIPrimitives` | DI protocols | `Clock`, `MainScheduler`, `DateProvider`, `HapticFeedback`, `Pasteboard`, `UrlOpener` |
 

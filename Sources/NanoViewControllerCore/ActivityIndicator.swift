@@ -22,32 +22,39 @@ import Foundation
 /// import Combine
 /// import NanoViewControllerCore
 ///
-/// final class SignUpViewModel: BaseViewModel<SignUpStep, SignUpInputFromView, SignUpOutput> {
-///     override func transform(input: Input) -> SignUpOutput {
+/// final class SignUpViewModel: AbstractViewModel<
+///     SignUpInputFromView,
+///     SignUpViewModel.Publishers,
+///     SignUpStep
+/// > {
+///     override func transform(input: Input) -> Output<Publishers, SignUpStep> {
+///         let navigator = Navigator<SignUpStep>()
 ///         let activity = ActivityIndicator()
 ///
-///         // Each tap triggers a network call. trackActivity marks the
-///         // indicator true while the call is in flight, then flips back to
-///         // false when the call completes (or fails, or is cancelled).
-///         input.fromView.signUpTapped
-///             .flatMapLatest { [service] _ in
-///                 service.signUp()
-///                     .trackActivity(activity)
-///                     .replaceErrorWithEmpty()
-///             }
-///             .sink { [navigator] user in navigator.next(.signedUp(user)) }
-///             .store(in: &cancellables)
-///
-///         return SignUpOutput(
-///             // The view binds this Bool to a spinner / disabled state.
-///             isLoading: activity.asPublisher()
-///         )
+///         return Output(
+///             publishers: Publishers(
+///                 // The view binds this Bool to a spinner / disabled state.
+///                 isLoading: activity.asPublisher()
+///             ),
+///             navigation: navigator.navigation
+///         ) {
+///             // Each tap triggers a network call. trackActivity marks the
+///             // indicator true while the call is in flight, then flips back to
+///             // false when the call completes (or fails, or is cancelled).
+///             input.fromView.signUpTapped
+///                 .flatMapLatest { [service] _ in
+///                     service.signUp()
+///                         .trackActivity(activity)
+///                         .replaceErrorWithEmpty()
+///                 }
+///                 .sink { [navigator] user in navigator.next(.signedUp(user)) }
+///         }
 ///     }
 /// }
 ///
 /// // In the view's populate(with:):
-/// output.isLoading --> primaryButton.isLoadingBinder
-/// output.isLoading.map { !$0 } --> primaryButton.isEnabledBinder
+/// publishers.isLoading --> primaryButton.isLoadingBinder
+/// publishers.isLoading.map { !$0 } --> primaryButton.isEnabledBinder
 /// ```
 ///
 /// ## Concurrency
