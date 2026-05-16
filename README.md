@@ -9,8 +9,8 @@ A quick inline taste of the architecture — for a runnable toy example and a re
 
 ```swift
 // MARK: NanoViewController
-public final class SignUpScene: Scene<SignUpView> { // 🤯 3 lines VC! 
-    public static let title = "Sign Up"
+public final class SignUpScene: NanoViewController<SignUpView>, ControllerConfigProviding { // tiny VC
+    public static let config = ControllerConfig(title: "Sign Up")
 }
 
 // MARK: View
@@ -123,7 +123,7 @@ The package ships six independent SPM library targets so consumers can pick exac
 | `NanoViewControllerCore` | value types | `ViewModelType`, `InputType`, `EmptyInitializable`, `AbstractViewModel`, `AbstractTarget`, `ActivityIndicator`, `ErrorTracker` |
 | `NanoViewControllerCombine` | reactive | `Binder`, the `-->` operator, `Publisher+Extras`, `UIControl`/`UITextField`/`UIView` publisher extensions |
 | `NanoViewControllerNavigation` | coordinators | `Coordinating`, `BaseCoordinator`, `Navigator`, `Stepper` |
-| `NanoViewControllerController` | UIKit glue | `SceneController<View>`, `BarButtonContent`, `InputFromController`, `ViewModelled`, `NavigationBarLayoutingNavigationController`, `Toast` |
+| `NanoViewControllerController` | UIKit glue | `NanoViewController<View>`, `ControllerConfig`, `BarButtonContent`, `InputFromController`, `ViewModelled`, `NavigationBarLayoutingNavigationController`, `Toast` |
 | `NanoViewControllerSceneViews` | UIKit views | `AbstractSceneView`, `BaseScrollableStackViewOwner`, `BaseTableViewOwner`, `SingleCellTypeTableView`, `CellConfigurable`, pull-to-refresh / class-identifiable / footer plumbing |
 | `NanoViewControllerDIPrimitives` | DI protocols | `Clock`, `MainScheduler`, `DateProvider`, `HapticFeedback`, `Pasteboard`, `UrlOpener` |
 
@@ -155,7 +155,7 @@ The `pre-commit` hook installed by `just bootstrap` enforces: typos, shellcheck,
 
 ## SignUpDemo (toy, in this repo)
 
-[`Examples/SignUpDemo/`](./Examples/SignUpDemo/) is a small UIKit iOS app that walks through every load-bearing piece of the package: a `SceneController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
+[`Examples/SignUpDemo/`](./Examples/SignUpDemo/) is a small UIKit iOS app that walks through every load-bearing piece of the package: a `NanoViewController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
 
 ```sh
 just example-gen     # generate Examples/SignUpDemo/SignUpDemo.xcodeproj from project.yml
@@ -163,7 +163,7 @@ just example-build   # xcodebuild for iPhone 17 simulator
 open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
 ```
 
-The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `AbstractViewModel<InputFromView, Publishers, NavigationStep>`, declares a local `Navigator<Step>` inside `transform` and surfaces it on the returned `Output<Publishers, Step>`. The coordinator subscribes to that publisher (via the hosting scene's `.navigation`) and routes the user-actions to push / pop / present transitions. 
+The example shows the canonical wiring: scene = `NanoViewController<View>`, view-model subclasses the package's `AbstractViewModel<InputFromView, Publishers, NavigationStep>`, declares a local `Navigator<Step>` inside `transform` and surfaces it on the returned `Output<Publishers, Step>`. The coordinator subscribes to that publisher (via the hosting scene's `.navigation`) and routes the user-actions to push / pop / present transitions.
 
 ## Zhip (real-world iOS wallet)
 

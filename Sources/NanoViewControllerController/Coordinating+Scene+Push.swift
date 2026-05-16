@@ -43,7 +43,7 @@ public extension Coordinating {
     ///   - navigationPresentationCompletion: Fires after the push transition.
     ///   - navigationHandler: Pattern-match on `V.ViewModel.NavigationStep`
     ///     and route each case.
-    func push<S: Scene<V>, V: ContentView>(
+    func push<S: NanoViewController<V>, V: ContentView>(
         scene _: S.Type,
         viewModel: V.ViewModel,
         animated: Bool = true,
@@ -72,7 +72,7 @@ public extension Coordinating {
     ///   - navigationPresentationCompletion: Fires after the push transition.
     ///   - navigationHandler: Pattern-match on `V.ViewModel.NavigationStep`
     ///     and route each case.
-    func pushSceneInstance<S: Scene<V>, V: ContentView>(
+    func pushSceneInstance<S: NanoViewController<V>, V: ContentView>(
         _ scene: S,
         animated: Bool = true,
         navigationPresentationCompletion: Completion? = nil,

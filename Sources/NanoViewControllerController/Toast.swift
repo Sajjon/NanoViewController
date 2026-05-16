@@ -8,8 +8,8 @@ import UIKit
 /// named after the Android equivalent.
 ///
 /// ViewModels `send(Toast(...))` into ``InputFromController/toastSubject`` to
-/// request a display; the ``SceneController`` presents it on the active view
-/// controller, using a ``Clock`` from ``SceneController/clock`` to schedule
+/// request a display; the ``NanoViewController`` presents it on the active view
+/// controller, using a ``Clock`` from ``NanoViewController/clock`` to schedule
 /// the auto-dismiss.
 ///
 /// ## Example — auto-dismissing toast on success

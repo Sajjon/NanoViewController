@@ -2,44 +2,6 @@
 
 import UIKit
 
-/// Conformance signals that a `UIViewController` (typically a
-/// ``SceneController``) wants its hosting navigation bar styled according to
-/// a particular ``NavigationBarLayout``.
-///
-/// ``NavigationBarLayoutingNavigationController/viewWillAppear(_:)`` checks
-/// for this conformance and pushes the layout onto its `navigationBar` — so
-/// per-screen styling (e.g. translucent vs opaque, hidden bar) lives on the
-/// controller instance instead of in shared appearance proxies.
-///
-/// ## Example
-///
-/// ```swift
-/// final class WelcomeScene: Scene<WelcomeView>, NavigationBarLayoutOwner {
-///     static var title: String { "" }
-///
-///     // Hide the nav bar entirely on the welcome screen.
-///     var navigationBarLayout: NavigationBarLayout {
-///         NavigationBarLayout(
-///             barStyle:        .default,
-///             visibility:      .hidden(animated: false),
-///             isTranslucent:   true,
-///             barTintColor:    .clear,
-///             tintColor:       .label,
-///             backgroundColor: .clear,
-///             backgroundImage: UIImage(),
-///             shadowImage:     UIImage(),
-///             titleFont:       .preferredFont(forTextStyle: .headline),
-///             titleColor:      .label
-///         )
-///     }
-/// }
-/// ```
-@MainActor
-public protocol NavigationBarLayoutOwner {
-    /// The styling the controller wants applied while it's on screen.
-    var navigationBarLayout: NavigationBarLayout { get }
-}
-
 public extension UINavigationBar {
     /// Mutates this navigation bar to match `layout`.
     ///
@@ -127,8 +89,8 @@ public extension UINavigationBar {
 /// }
 ///
 /// // Consumer screen:
-/// final class HomeScene: Scene<HomeView>, NavigationBarLayoutOwner {
-///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
+/// final class HomeScene: NanoViewController<HomeView>, ControllerConfigProviding {
+///     static let config = ControllerConfig(navigationBarLayout: .opaque(brand: .primary))
 /// }
 /// ```
 public struct NavigationBarLayout: Equatable, Sendable {

@@ -12,12 +12,11 @@ import UIKit
 /// ## Example — static bar-button content
 ///
 /// ```swift
-/// final class SignUpScene: Scene<SignUpView>, RightBarButtonContentMaking {
-///     static var title: String { "Sign up" }
-///     // A `Skip` button on the top-right.
-///     static var makeRightContent: BarButtonContent {
-///         BarButtonContent(title: "Skip", style: .plain)
-///     }
+/// final class SignUpScene: NanoViewController<SignUpView>, ControllerConfigProviding {
+///     static let config = ControllerConfig(
+///         title: "Sign up",
+///         rightBarButton: BarButtonContent(title: "Skip", style: .plain)
+///     )
 /// }
 /// ```
 ///
@@ -128,10 +127,10 @@ public extension BarButtonContent {
     /// the raw `SystemItem` to the matching `UIBarButtonItem` initialiser,
     /// which already encodes its own visual style.
     ///
-    /// ``AbstractController/setRightBarButtonUsing(content:)`` and the left-
+    /// ``NanoViewController/setRightBarButtonUsing(content:)`` and the left-
     /// hand variant call this with the controller's
-    /// ``AbstractController/rightBarButtonAbstractTarget`` /
-    /// ``AbstractController/leftBarButtonAbstractTarget`` and
+    /// ``NanoViewController/rightBarButtonAbstractTarget`` /
+    /// ``NanoViewController/leftBarButtonAbstractTarget`` and
     /// `#selector(AbstractTarget.pressed)`. You rarely call this directly.
     ///
     /// - Parameters:

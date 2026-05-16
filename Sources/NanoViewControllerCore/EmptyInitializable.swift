@@ -4,7 +4,7 @@ import Foundation
 
 /// Marker protocol asserting "this type can be constructed with no arguments".
 ///
-/// ``SceneController`` instantiates the root content view via
+/// ``NanoViewController`` instantiates the root content view via
 /// `(View.self as EmptyInitializable.Type).init()`. Declaring conformance is
 /// effectively free for any type whose `init()` is non-failable — usually a
 /// one-line:
@@ -38,7 +38,7 @@ import Foundation
 /// import NanoViewControllerSceneViews
 /// import UIKit
 ///
-/// /// Scene root. EmptyInitializable so SceneController<View> can build it.
+/// /// Scene root. EmptyInitializable so NanoViewController<View> can build it.
 /// final class WelcomeView: BaseScrollableStackViewOwner, ContentViewProvider {
 ///     // BaseScrollableStackViewOwner already provides `required init()` and
 ///     // declares EmptyInitializable conformance, so this subclass inherits it.
@@ -55,7 +55,7 @@ import Foundation
 ///     // ... ViewModelled conformance fills in the rest
 /// }
 ///
-/// // SceneController<WelcomeView> can now construct the view via
+/// // NanoViewController<WelcomeView> can now construct the view via
 /// // (WelcomeView.self as EmptyInitializable.Type).init().
 /// ```
 ///

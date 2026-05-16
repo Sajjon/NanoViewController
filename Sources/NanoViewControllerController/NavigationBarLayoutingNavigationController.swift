@@ -31,7 +31,7 @@ import UIKit
 public final class NavigationBarLayoutingNavigationController: UINavigationController {
     /// The layout most recently applied to the nav bar.
     ///
-    /// ``SceneController/applyLayoutIfNeeded()`` reads this to skip
+    /// ``NanoViewController/applyLayoutIfNeeded(_:)`` reads this to skip
     /// re-applying an identical layout — avoids needless animation flickers
     /// when two consecutive scenes use the same layout.
     public var lastLayout: NavigationBarLayout?
@@ -101,17 +101,23 @@ public final class NavigationBarLayoutingNavigationController: UINavigationContr
 // MARK: - Public Methods
 
 public extension NavigationBarLayoutingNavigationController {
-    /// Reads the layout from a ``NavigationBarLayoutOwner`` (if the VC opts
-    /// in) and applies it.
+    /// Reads the layout from a ``NanoViewController``'s ``ControllerConfig``
+    /// (if present) and applies it.
     ///
-    /// No-op if the VC doesn't own a layout — the previous layout stays.
+    /// No-op if the VC doesn't configure a layout — the previous layout stays.
     /// This is what lets a non-conforming controller "inherit" the previous
     /// scene's bar styling: no override means no change.
     ///
     /// - Parameter viewController: The candidate VC. May be nil after a pop.
     func applyLayoutToViewController(_ viewController: UIViewController?) {
-        guard let viewController, let barLayoutOwner = viewController as? NavigationBarLayoutOwner else { return }
-        applyLayout(barLayoutOwner.navigationBarLayout)
+        guard
+            let viewController = viewController as? AnyNanoViewController,
+            let navigationBarLayout = viewController.controllerConfig.navigationBarLayout
+        else {
+            return
+        }
+
+        applyLayout(navigationBarLayout)
     }
 
     /// Applies a ``NavigationBarLayout`` to the underlying `UINavigationBar`,

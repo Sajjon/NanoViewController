@@ -16,7 +16,7 @@ import NanoViewControllerCore
 ///
 /// Subscriptions started inside `transform`, plus the navigation publisher,
 /// are returned in the resulting ``Output`` and consumed by
-/// ``SceneController`` for the lifetime of the scene — `AbstractViewModel`
+/// ``NanoViewController`` for the lifetime of the scene — `AbstractViewModel`
 /// does **not** carry a `cancellables` bag or a stored `navigator`.
 ///
 /// The class is generic over three slots:
@@ -28,7 +28,7 @@ import NanoViewControllerCore
 ///
 /// The controller channel is pinned to ``InputFromController`` (by the
 /// ``InputType`` protocol itself) — every scene-bound view-model uses it.
-/// View-models that don't run on a ``SceneController`` (embedded sub-views,
+/// View-models that don't run on a ``NanoViewController`` (embedded sub-views,
 /// for example) should conform to ``ViewModelType`` directly without
 /// subclassing `AbstractViewModel`.
 ///
@@ -93,7 +93,7 @@ import NanoViewControllerCore
 ///
 /// `@MainActor` because it conforms to ``ViewModelType``, which is itself
 /// `@MainActor`. View-models in this package are inherently main-thread —
-/// they're owned by `SceneController` (a `UIViewController` subclass) and
+/// they're owned by `NanoViewController` (a `UIViewController` subclass) and
 /// their `transform(input:)` runs on the main actor.
 @MainActor
 open class AbstractViewModel<
@@ -104,7 +104,7 @@ open class AbstractViewModel<
     /// The concrete ``InputType`` Swift synthesizes for each
     /// `AbstractViewModel` specialisation.
     ///
-    /// `SceneController` constructs this struct by combining the View's
+    /// `NanoViewController` constructs this struct by combining the View's
     /// `inputFromView` with the lifecycle-derived ``InputFromController`` it
     /// owns, and hands it to ``transform(input:)``.
     public struct Input: InputType {
@@ -116,7 +116,7 @@ open class AbstractViewModel<
 
         /// Designated initializer.
         ///
-        /// `SceneController` calls this to stitch together the two input
+        /// `NanoViewController` calls this to stitch together the two input
         /// channels before handing the struct to `transform`. Tests call it
         /// directly when building synthetic input.
         public init(fromView: FromView, fromController: InputFromController) {

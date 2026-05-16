@@ -31,7 +31,7 @@ public extension Coordinating {
     ///   - presentationCompletion: Optional callback fired after presentation.
     ///   - navigationHandler: Step-handling closure. The trailing
     ///     ``DismissScene`` is how the caller dismisses this modal.
-    func modallyPresent<S: Scene<V>, V: ContentView>(
+    func modallyPresent<S: NanoViewController<V>, V: ContentView>(
         scene _: S.Type,
         viewModel: V.ViewModel,
         animated: Bool = true,
@@ -62,7 +62,7 @@ public extension Coordinating {
     ///   - presentationCompletion: Fires after presentation completes.
     ///   - navigationHandler: Step-handling closure. Use the trailing
     ///     ``DismissScene`` to dismiss.
-    func modallyPresent<S: Scene<V>, V: ContentView>(
+    func modallyPresent<S: NanoViewController<V>, V: ContentView>(
         scene: S,
         animated: Bool = true,
         presentationCompletion: Completion? = nil,

@@ -2,8 +2,7 @@
 
 import NanoViewControllerController
 
-/// `SceneController` glue for the Home screen. See `SignUpScene` for why the
-/// body is empty.
-public final class HomeScene: Scene<HomeView> {
-    public static let title = "Home"
+/// `NanoViewController` glue for the Home screen.
+public final class HomeScene: NanoViewController<HomeView>, ControllerConfigProviding {
+    public static let config = ControllerConfig(title: "Home")
 }

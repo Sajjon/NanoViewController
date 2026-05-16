@@ -11,15 +11,15 @@ import NanoViewControllerCore
 /// carries its navigation channel as part of the return value rather than as a
 /// stored property. The flow is:
 ///
-/// 1. ``SceneController`` collects `inputFromView` from the root content view.
-/// 2. ``SceneController`` builds ``InputFromController`` from its own lifecycle.
-/// 3. ``SceneController`` stitches the two into a single `Input` value and calls
+/// 1. ``NanoViewController`` collects `inputFromView` from the root content view.
+/// 2. ``NanoViewController`` builds ``InputFromController`` from its own lifecycle.
+/// 3. ``NanoViewController`` stitches the two into a single `Input` value and calls
 ///    ``transform(input:)``.
 /// 4. The ViewModel returns an ``Output`` carrying:
 ///       * `publishers`     — the bag the view binds in `populate(with:)`,
 ///       * `navigation`     — the stream the coordinator subscribes to,
 ///       * `cancellables`   — every subscription started inside `transform`.
-/// 5. ``SceneController`` retains the cancellables, exposes `navigation` for
+/// 5. ``NanoViewController`` retains the cancellables, exposes `navigation` for
 ///    the coordinator, and forwards `publishers` to the view's `populate`.
 ///
 /// ## Why "pure" transform?
@@ -94,11 +94,11 @@ import NanoViewControllerCore
 ///
 /// The view binds the publishers in `populate(with:)` (see ``ViewModelled``).
 /// The coordinator subscribes to the navigation publisher exposed by the
-/// hosting ``SceneController`` and routes `.signedUp(user)` to whatever
+/// hosting ``NanoViewController`` and routes `.signedUp(user)` to whatever
 /// transition makes sense.
 ///
 /// `@MainActor` because every concrete ViewModel is constructed by, observed
-/// from, and torn down with a `SceneController` (a `UIViewController`
+/// from, and torn down with a `NanoViewController` (a `UIViewController`
 /// subclass), all of which run on the main actor.
 @MainActor
 public protocol ViewModelType {
@@ -121,7 +121,7 @@ public protocol ViewModelType {
 
     /// Runs the ViewModel's business logic.
     ///
-    /// Called exactly once per instance, typically by ``SceneController``
+    /// Called exactly once per instance, typically by ``NanoViewController``
     /// during scene construction. Implementations:
     ///
     ///   * Wire `input.fromView` and `input.fromController` publishers into

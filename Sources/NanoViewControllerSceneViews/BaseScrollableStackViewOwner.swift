@@ -11,7 +11,7 @@ import UIKit
 /// `UIStackView`. This is the most common scene-view base class, used for
 /// any "scroll a column of widgets" screen.
 ///
-/// Conforms to ``EmptyInitializable`` so ``SceneController`` can construct it
+/// Conforms to ``EmptyInitializable`` so ``NanoViewController`` can construct it
 /// from the `View` generic constraint without consumers having to write a
 /// custom factory.
 ///
@@ -65,13 +65,13 @@ import UIKit
 ///     }
 /// }
 ///
-/// // SceneController<WelcomeView> can now host this view directly.
-/// typealias WelcomeScene = Scene<WelcomeView>
+/// // NanoViewController<WelcomeView> can now host this view directly.
+/// final class WelcomeScene: NanoViewController<WelcomeView> {}
 /// ```
 open class BaseScrollableStackViewOwner: AbstractSceneView, EmptyInitializable {
     // MARK: Initialization
 
-    /// ``EmptyInitializable`` entry point — ``SceneController`` constructs
+    /// ``EmptyInitializable`` entry point — ``NanoViewController`` constructs
     /// the scene view via `init()`.
     ///
     /// Passes a fresh empty `UIScrollView` to the abstract base, then runs

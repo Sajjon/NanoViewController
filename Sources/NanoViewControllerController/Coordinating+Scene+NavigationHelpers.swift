@@ -11,7 +11,7 @@ extension Coordinating {
     ///
     /// Used by the push-style hookup in
     /// ``Coordinating/pushSceneInstance(_:animated:navigationPresentationCompletion:navigationHandler:)``.
-    func subscribeToNavigation<S: Scene<V>, V: ContentView>(
+    func subscribeToNavigation<S: NanoViewController<V>, V: ContentView>(
         of scene: S,
         handler: @escaping (V.ViewModel.NavigationStep) -> Void
     ) {
@@ -25,7 +25,7 @@ extension Coordinating {
     /// the scene with optional animation. Used by the modal-style hookups in
     /// ``Coordinating/modallyPresent(scene:animated:presentationCompletion:navigationHandler:)``
     /// and ``Coordinating/replaceAllScenes(with:animated:whenReplacingFinished:navigationHandler:)``.
-    func subscribeToModalNavigation<S: Scene<V>, V: ContentView>(
+    func subscribeToModalNavigation<S: NanoViewController<V>, V: ContentView>(
         of scene: S,
         handler: @escaping NavigationHandlerModalScene<V.ViewModel>
     ) {

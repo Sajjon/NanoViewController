@@ -7,7 +7,7 @@ import Foundation
 /// receives.
 ///
 /// Publishers (``viewDidLoad``, bar-button triggers) flow **from** the
-/// ``SceneController`` **into** the ViewModel. Subjects (``titleSubject``,
+/// ``NanoViewController`` **into** the ViewModel. Subjects (``titleSubject``,
 /// ``toastSubject``, etc.) flow the other direction: the ViewModel `send`s
 /// values to drive UI the controller owns.
 ///
@@ -45,7 +45,7 @@ import Foundation
 /// }
 /// ```
 ///
-/// The ``SceneController`` handles all the UIKit side-effects: it sets the
+/// The ``NanoViewController`` handles all the UIKit side-effects: it sets the
 /// title on the navigation item when ``titleSubject`` fires, dispatches a
 /// `UIAlertController`-based toast when ``toastSubject`` fires, and so on.
 public struct InputFromController {
@@ -74,7 +74,7 @@ public struct InputFromController {
 
     /// The ViewModel pushes left-bar-button content (icon / title / enabled
     /// state) here. Each emission is wired up via
-    /// ``AbstractController/setLeftBarButtonUsing(content:)``.
+    /// ``NanoViewController/setLeftBarButtonUsing(content:)``.
     public let leftBarButtonContentSubject: PassthroughSubject<BarButtonContent, Never>
 
     /// The ViewModel pushes right-bar-button content here. Same wiring as
@@ -85,7 +85,7 @@ public struct InputFromController {
     /// to display.
     public let toastSubject: PassthroughSubject<Toast, Never>
 
-    /// Memberwise initialiser — public so ``SceneController`` (or test fakes)
+    /// Memberwise initialiser — public so ``NanoViewController`` (or test fakes)
     /// can build the struct from the right side of the package boundary.
     public init(
         viewDidLoad: AnyPublisher<Void, Never>,

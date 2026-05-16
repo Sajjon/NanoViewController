@@ -13,7 +13,7 @@ public extension NanoViewController {
     /// Use directly when imperatively setting a bar button (rare). Most
     /// scenes either:
     ///
-    ///   * conform to ``RightBarButtonContentMaking`` — a static one-shot
+    ///   * provide ``ControllerConfig/rightBarButton`` for static one-shot
     ///     installation in `viewDidLoad`, or
     ///   * push to ``InputFromController/rightBarButtonContentSubject`` — for
     ///     dynamic content that changes over time (e.g. enable/disable based
@@ -22,8 +22,9 @@ public extension NanoViewController {
     /// ## Example — imperative use from a custom subclass
     ///
     /// ```swift
-    /// final class CustomScene: NanoViewController<MyView>, TitledScene {
-    ///     static var title: String { "Custom" }
+    /// final class CustomScene: NanoViewController<MyView>, ControllerConfigProviding {
+    ///     static let config = ControllerConfig(title: "Custom")
+    ///
     ///     override func viewDidLoad() {
     ///         super.viewDidLoad()
     ///         setRightBarButtonUsing(content: BarButtonContent(system: .add))

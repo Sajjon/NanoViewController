@@ -11,7 +11,7 @@ import Foundation
 ///     Owned by the View, exposed as `inputFromView`.
 ///   * ``fromController`` — controller lifecycle events plus *write-back*
 ///     subjects (title updates, toast dispatch, dynamic bar-button content).
-///     Owned by ``SceneController``, exposed as ``InputFromController``.
+///     Owned by ``NanoViewController``, exposed as ``InputFromController``.
 ///
 /// Splitting them this way keeps the View free of any UIKit-controller knowledge
 /// and lets the ViewModel react to lifecycle events (e.g. fetch on
@@ -99,7 +99,7 @@ import Foundation
 /// ```
 ///
 /// `@MainActor` because the input is constructed and consumed inside
-/// `SceneController` (a `UIViewController` subclass), so the whole
+/// `NanoViewController` (a `UIViewController` subclass), so the whole
 /// view-model pipeline lives on the main actor.
 @MainActor
 public protocol InputType {
@@ -111,12 +111,12 @@ public protocol InputType {
     var fromView: FromView { get }
 
     /// The controller channel — pinned to ``InputFromController``, the
-    /// concrete write-back surface every ``SceneController`` builds.
+    /// concrete write-back surface every ``NanoViewController`` builds.
     var fromController: InputFromController { get }
 
     /// Designated initializer.
     ///
-    /// ``SceneController`` constructs this struct on the ViewModel's behalf by
+    /// ``NanoViewController`` constructs this struct on the ViewModel's behalf by
     /// combining the `View.inputFromView` property with the lifecycle-derived
     /// ``InputFromController`` it builds itself. Tests can call this directly
     /// when wiring a synthetic `Input`.

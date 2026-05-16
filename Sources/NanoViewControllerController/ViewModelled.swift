@@ -8,7 +8,7 @@ import NanoViewControllerCore
 /// reactive MVVM pipeline.
 ///
 /// A `ViewModelled` view exposes its user-driven publishers as
-/// ``inputFromView`` (read by ``SceneController``), and binds the ViewModel's
+/// ``inputFromView`` (read by ``NanoViewController``), and binds the ViewModel's
 /// `Publishers` bag back into UI controls via ``populate(with:)`` — returning
 /// the `AnyCancellable`s so the controller can retain them for the view's
 /// lifetime.
@@ -62,7 +62,7 @@ import NanoViewControllerCore
 /// }
 /// ```
 ///
-/// `SceneController<WelcomeView>` then handles the rest — building the
+/// `NanoViewController<WelcomeView>` then handles the rest — building the
 /// `Input`, calling `viewModel.transform(input:)`, and storing every
 /// cancellable returned by `populate(with:)` *and* every cancellable carried
 /// in the `Output` from `transform` on its own `cancellables` bag.
@@ -86,7 +86,7 @@ public protocol ViewModelled: EmptyInitializable {
     /// Binds the ViewModel's output publishers to UI controls.
     ///
     /// Called exactly once after `transform`. The returned cancellables are
-    /// retained by ``SceneController`` for the lifetime of the scene.
+    /// retained by ``NanoViewController`` for the lifetime of the scene.
     ///
     /// - Parameter publishers: The publisher bag carried in the ``Output``
     ///   returned from ``ViewModelType/transform(input:)``.
@@ -113,4 +113,3 @@ public extension ViewModelled {
         []
     }
 }
-

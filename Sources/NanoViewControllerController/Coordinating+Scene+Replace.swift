@@ -48,7 +48,7 @@ public extension Coordinating {
     ///     }
     /// }
     /// ```
-    func replaceAllScenes<S: Scene<V>, V: ContentView>(
+    func replaceAllScenes<S: NanoViewController<V>, V: ContentView>(
         with _: S.Type,
         viewModel: V.ViewModel,
         animated: Bool = true,
@@ -70,7 +70,7 @@ public extension Coordinating {
     /// ``replaceAllScenes(with:viewModel:animated:whenReplacingFinished:navigationHandler:)``.
     ///
     /// Use when you already have a scene instance.
-    func replaceAllScenes<S: Scene<V>, V: ContentView>(
+    func replaceAllScenes<S: NanoViewController<V>, V: ContentView>(
         with scene: S,
         animated: Bool = true,
         whenReplacingFinished: Completion? = nil,

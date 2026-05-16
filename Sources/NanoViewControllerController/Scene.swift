@@ -8,9 +8,9 @@ import UIKit
 /// (``EmptyInitializable``) and how to bind to its associated ViewModel via
 /// `populate(with:)` and `inputFromView`.
 ///
-/// ``SceneController`` is parameterised on this typealias so the same generic
+/// ``NanoViewController`` is parameterised on this typealias so the same generic
 /// glue can host any `(UIView, ViewModelled)` pair without each scene having
-/// to subclass `SceneController`.
+/// to declare its view/model relationship repeatedly.
 ///
 /// ## Example — declaring a `ContentView` from scratch
 ///
@@ -50,35 +50,6 @@ import UIKit
 /// }
 ///
 /// // Now WelcomeView fits the ContentView typealias and can be hosted by
-/// // SceneController<WelcomeView> directly.
+/// // NanoViewController<WelcomeView> directly.
 /// ```
 public typealias ContentView = UIView & ViewModelled
-
-/// The standard scene-controller "shape" used throughout coordinators.
-///
-/// Equivalent to ``SceneController`` plus a static ``TitledScene`` title.
-///
-/// Use this typealias when you don't need a subclass. If your screen requires
-/// a subclass (custom lifecycle, extra UIKit hooks), inherit from
-/// ``SceneController`` directly and conform to ``TitledScene`` yourself.
-///
-/// ## Example — declaring a Scene typealias for a screen
-///
-/// ```swift
-/// import NanoViewControllerController
-///
-/// final class WelcomeScene: Scene<WelcomeView> {
-///     // The compiler synthesises the (TitledScene + SceneController<WelcomeView>)
-///     // conformance via the typealias; we only need a static title.
-///     static var title: String { "Welcome" }
-/// }
-///
-/// // In a coordinator:
-/// push(scene: WelcomeScene.self, viewModel: WelcomeViewModel(api: api)) { step in
-///     // …
-/// }
-/// ```
-public typealias Scene<View: ContentView> = NanoViewController<View> & TitledScene
-
-@available(*, deprecated, renamed: "NanoViewController")
-public typealias SceneController<View: ContentView> = NanoViewController<View>

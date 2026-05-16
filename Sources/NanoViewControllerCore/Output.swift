@@ -79,7 +79,7 @@ public struct Output<Publishers, NavigationStep: Sendable> {
     public let navigation: AnyPublisher<NavigationStep, Never>
 
     /// Subscriptions started inside `transform` that must outlive the call.
-    /// ``SceneController`` stores these in its own bag so they live as long
+    /// ``NanoViewController`` stores these in its own bag so they live as long
     /// as the scene.
     public let cancellables: [AnyCancellable]
 

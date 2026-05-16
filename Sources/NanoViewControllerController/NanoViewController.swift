@@ -21,9 +21,8 @@ import UIKit
 ///      ``ViewModelled/populate(with:)``.
 ///
 /// This is the load-bearing class of the package — coordinators push instances
-/// of `NanoViewController<…>` directly through the ``Scene`` typealias, and you
-/// almost never need to subclass it. The whole point is that *one line of
-/// code* per screen ("push this scene with this view-model") is enough.
+/// of `NanoViewController<…>` directly, and you almost never need to subclass
+/// it beyond declaring a concrete screen type and optional ``ControllerConfig``.
 ///
 /// ## Example — coordinator pushing a scene
 ///
@@ -38,9 +37,8 @@ import UIKit
 /// }
 /// ```
 ///
-/// `WelcomeScene` is just a `Scene<WelcomeView>` typealias — there is *no*
-/// hand-written controller class for the welcome screen. `NanoViewController`
-/// is doing all the work generically.
+/// `WelcomeScene` can be an empty `NanoViewController<WelcomeView>` subclass.
+/// `NanoViewController` is doing all the work generically.
 ///
 /// ## Subclassing — when (rarely) needed
 ///
@@ -48,14 +46,17 @@ import UIKit
 ///
 ///   * change ``rootBackgroundColor`` — your app's brand background,
 ///   * substitute a test ``clock`` for synchronous toast auto-dismiss,
-///   * conform to ``NavigationBarLayoutOwner`` to pin a per-scene nav-bar
-///     layout (translucent / opaque / hidden).
+///   * provide ``ControllerConfigProviding/config`` to set static title, bar
+///     buttons, back-button behavior, and nav-bar layout.
 ///
 /// ```swift
-/// final class BrandedWelcomeScene: NanoViewController<WelcomeView>, TitledScene, NavigationBarLayoutOwner {
-///     static var title: String { "Welcome" }
+/// final class BrandedWelcomeScene: NanoViewController<WelcomeView>, ControllerConfigProviding {
+///     static let config = ControllerConfig(
+///         title: "Welcome",
+///         navigationBarLayout: .opaque(brand: .primary)
+///     )
+///
 ///     override var rootBackgroundColor: UIColor { .brandBackground }
-///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
 /// }
 /// ```
 open class NanoViewController<View: ContentView>: UIViewController {
@@ -117,6 +118,15 @@ open class NanoViewController<View: ContentView>: UIViewController {
         .systemBackground
     }
 
+    /// Instance-level chrome configuration.
+    ///
+    /// Override this when a scene's chrome depends on construction-time state.
+    /// Otherwise conform the concrete subclass to ``ControllerConfigProviding``
+    /// and declare a `static let config`.
+    open var controllerConfig: ControllerConfig {
+        (type(of: self) as? ControllerConfigProviding.Type)?.config ?? .default
+    }
+
     /// Fires when `viewDidLoad` runs. Piped into
     /// ``InputFromController/viewDidLoad``.
     private let viewDidLoadSubject = PassthroughSubject<Void, Never>()
@@ -165,12 +175,11 @@ open class NanoViewController<View: ContentView>: UIViewController {
     /// swipe-back), then fires the `viewDidLoad` lifecycle subject so the
     /// ViewModel's pipelines see it.
     ///
-    /// Each opt-in protocol (``TitledScene``,
-    /// ``RightBarButtonContentMaking``, ``LeftBarButtonContentMaking``,
-    /// ``BackButtonHiding``) is detected via runtime cast — there is no
-    /// required override in subclasses, and absence is the no-op default.
+    /// Static chrome is read from ``controllerConfig``. Dynamic bar-button
+    /// changes still flow through ``InputFromController`` subjects.
     override open func viewDidLoad() {
         super.viewDidLoad()
+        let config = controllerConfig
 
         // App-wide background colour goes on the controller's view (visible
         // behind the content view during animations); content view is
@@ -186,33 +195,27 @@ open class NanoViewController<View: ContentView>: UIViewController {
             rootContentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        // Auto-set the navigation title only if a non-empty `TitledScene.title`
-        // is provided. `case let sceneTitle = …` is just a destructuring
-        // binding — could be a plain `let`.
-        if let titled = self as? TitledScene, case let sceneTitle = titled.sceneTitle, !sceneTitle.isEmpty {
+        // Auto-set the navigation title only if a non-empty title is provided.
+        if let sceneTitle = config.title, !sceneTitle.isEmpty {
             title = sceneTitle
         }
 
         // Opt-in static bar-button installation. Dynamic per-screen changes go
         // through the `…BarButtonContentSubject` instead (see
         // `makeAndSubscribeToInputFromController`).
-        if let rightButtonMaker = self as? RightBarButtonContentMaking {
-            rightButtonMaker.setRightBarButton(for: self)
+        if let rightBarButton = config.rightBarButton {
+            setRightBarButtonUsing(content: rightBarButton)
         }
 
-        if let leftButtonMaker = self as? LeftBarButtonContentMaking {
-            leftButtonMaker.setLeftBarButton(for: self)
+        if let leftBarButton = config.leftBarButton {
+            setLeftBarButtonUsing(content: leftBarButton)
         }
 
-        // BackButtonHiding screens both hide the chevron AND disable
-        // interactive pop — typically used on flow-terminating screens like
-        // a successful-create confirmation, where backing up would re-enter
-        // an inconsistent state.
-        if self is BackButtonHiding {
+        if config.hidesBackButton {
             navigationItem.hidesBackButton = true
         }
 
-        navigationController?.interactivePopGestureRecognizer?.isEnabled = !(self is BackButtonHiding)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = !config.hidesBackButton
 
         // Last — fire the lifecycle pulse only after all chrome is in place,
         // so any view-model handler observing `viewDidLoad` can safely assume
@@ -224,7 +227,7 @@ open class NanoViewController<View: ContentView>: UIViewController {
     /// previous scene) and forwards the lifecycle event.
     override open func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        applyLayoutIfNeeded()
+        applyLayoutIfNeeded(controllerConfig.navigationBarLayout)
         viewWillAppearSubject.send(())
     }
 
@@ -329,7 +332,8 @@ private extension NanoViewController {
     ///   3. Scene doesn't own a layout? No-op (the previous layout stays).
     ///   4. Same layout as last applied? Skip the work (avoid pointless animations).
     ///   5. Otherwise apply the new layout.
-    func applyLayoutIfNeeded() {
+    func applyLayoutIfNeeded(_ layout: NavigationBarLayout?) {
+        guard let layout else { return }
         guard let navigationController else { return }
         guard let barLayoutingNavController = navigationController as? NavigationBarLayoutingNavigationController else {
             incorrectImplementation(
@@ -337,16 +341,18 @@ private extension NanoViewController {
             )
         }
 
-        guard let barLayoutOwner = self as? NavigationBarLayoutOwner else {
-            return
-        }
-
         if let lastLayout = barLayoutingNavController.lastLayout {
-            let layout = barLayoutOwner.navigationBarLayout
             guard layout != lastLayout else { return }
             barLayoutingNavController.applyLayout(layout)
         } else {
-            barLayoutingNavController.applyLayout(barLayoutOwner.navigationBarLayout)
+            barLayoutingNavController.applyLayout(layout)
         }
     }
 }
+
+@MainActor
+protocol AnyNanoViewController: AnyObject {
+    var controllerConfig: ControllerConfig { get }
+}
+
+extension NanoViewController: AnyNanoViewController {}
