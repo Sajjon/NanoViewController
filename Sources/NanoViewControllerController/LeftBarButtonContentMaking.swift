@@ -36,7 +36,7 @@ public extension LeftBarButtonContentMaking {
     /// indirection at every call site.
     ///
     /// - Parameter viewController: The controller to install the button on.
-    func setLeftBarButton(for viewController: AbstractController) {
+    func setLeftBarButton<View: ContentView>(for viewController: NanoViewController<View>) {
         viewController.setLeftBarButtonUsing(content: Self.makeLeftContent)
     }
 }

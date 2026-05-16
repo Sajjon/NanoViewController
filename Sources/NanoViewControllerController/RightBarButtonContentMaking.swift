@@ -37,7 +37,7 @@ public extension RightBarButtonContentMaking {
     /// right bar button on the supplied controller.
     ///
     /// - Parameter viewController: The controller to install the button on.
-    func setRightBarButton(for viewController: AbstractController) {
+    func setRightBarButton<View: ContentView>(for viewController: NanoViewController<View>) {
         viewController.setRightBarButtonUsing(content: Self.makeRightContent)
     }
 }

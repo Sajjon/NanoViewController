@@ -74,8 +74,8 @@ public extension Coordinating {
         return last.topMostCoordinator
     }
 
-    /// The ``AbstractController`` currently visible on screen, taking into
-    /// account modal presentations.
+    /// The `UIViewController` currently visible on screen, taking into account
+    /// modal presentations.
     ///
     /// Used by toast presentation so a toast is shown on top of any modal
     /// that's currently up.
@@ -88,15 +88,15 @@ public extension Coordinating {
     ///     Toast("Synced").present(using: scene, clock: MainQueueClock())
     /// }
     /// ```
-    var topMostScene: AbstractController? {
+    var topMostScene: UIViewController? {
         if let presentedController = topMostCoordinator.navigationController.presentedViewController {
             if let presentedNavigationController = presentedController as? UINavigationController {
-                return presentedNavigationController.topViewController as? AbstractController
+                return presentedNavigationController.topViewController
             } else {
-                return presentedController as? AbstractController
+                return presentedController
             }
         } else {
-            return topMostCoordinator.navigationController.topViewController as? AbstractController
+            return topMostCoordinator.navigationController.topViewController
         }
     }
 }

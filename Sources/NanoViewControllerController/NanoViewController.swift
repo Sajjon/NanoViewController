@@ -8,7 +8,7 @@ import UIKit
 /// The "Single-Line Controller" base class — generic scene glue that hosts
 /// any `(UIView, ViewModelled)` pair without per-scene controller code.
 ///
-/// `SceneController<View>`:
+/// `NanoViewController<View>`:
 ///
 ///   1. Instantiates `View` empty via ``EmptyInitializable``.
 ///   2. Builds an ``InputFromController`` from its own lifecycle, bar-button
@@ -21,7 +21,7 @@ import UIKit
 ///      ``ViewModelled/populate(with:)``.
 ///
 /// This is the load-bearing class of the package — coordinators push instances
-/// of `SceneController<…>` directly through the ``Scene`` typealias, and you
+/// of `NanoViewController<…>` directly through the ``Scene`` typealias, and you
 /// almost never need to subclass it. The whole point is that *one line of
 /// code* per screen ("push this scene with this view-model") is enough.
 ///
@@ -39,7 +39,7 @@ import UIKit
 /// ```
 ///
 /// `WelcomeScene` is just a `Scene<WelcomeView>` typealias — there is *no*
-/// hand-written controller class for the welcome screen. `SceneController`
+/// hand-written controller class for the welcome screen. `NanoViewController`
 /// is doing all the work generically.
 ///
 /// ## Subclassing — when (rarely) needed
@@ -52,17 +52,33 @@ import UIKit
 ///     layout (translucent / opaque / hidden).
 ///
 /// ```swift
-/// final class BrandedWelcomeScene: SceneController<WelcomeView>, TitledScene, NavigationBarLayoutOwner {
+/// final class BrandedWelcomeScene: NanoViewController<WelcomeView>, TitledScene, NavigationBarLayoutOwner {
 ///     static var title: String { "Welcome" }
 ///     override var rootBackgroundColor: UIColor { .brandBackground }
 ///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
 /// }
 /// ```
-open class SceneController<View: ContentView>: AbstractController
-    where View.ViewModel.Input.FromController == InputFromController
-{
+open class NanoViewController<View: ContentView>: UIViewController {
     /// Convenience alias for the view's ViewModel type.
     public typealias ViewModel = View.ViewModel
+
+    /// Subject fired every time the navigation-item *right* bar button is
+    /// pressed. Forwarded to the ViewModel as
+    /// ``InputFromController/rightBarButtonTrigger``.
+    public let rightBarButtonSubject = PassthroughSubject<Void, Never>()
+
+    /// Subject fired every time the navigation-item *left* bar button is
+    /// pressed. Forwarded to the ViewModel as
+    /// ``InputFromController/leftBarButtonTrigger``.
+    public let leftBarButtonSubject = PassthroughSubject<Void, Never>()
+
+    /// `@objc` target object UIKit invokes for the right bar button's action
+    /// selector.
+    public lazy var rightBarButtonAbstractTarget = AbstractTarget(triggerSubject: rightBarButtonSubject)
+
+    /// `@objc` target object UIKit invokes for the left bar button's action
+    /// selector.
+    public lazy var leftBarButtonAbstractTarget = AbstractTarget(triggerSubject: leftBarButtonSubject)
 
     /// Bag of Combine subscriptions owned by this controller (navigation-bar
     /// bindings, toasts, title updates, view ↔ view-model bindings).
@@ -96,7 +112,7 @@ open class SceneController<View: ContentView>: AbstractController
     /// `view.backgroundColor` is set to in `viewDidLoad`.
     ///
     /// Defaults to `.systemBackground`. Subclasses (or app-level extensions
-    /// on `SceneController`) override this to apply a brand background.
+    /// on `NanoViewController`) override this to apply a brand background.
     open var rootBackgroundColor: UIColor {
         .systemBackground
     }
@@ -217,11 +233,18 @@ open class SceneController<View: ContentView>: AbstractController
         super.viewDidAppear(animated)
         viewDidAppearSubject.send(())
     }
+
+    /// Default `description` is the runtime class name — handy in logs to
+    /// identify the concrete `NanoViewController<…>` specialisation without an
+    /// inheritance dance.
+    override open var description: String {
+        "\(type(of: self))"
+    }
 }
 
 // MARK: Private
 
-private extension SceneController {
+private extension NanoViewController {
     /// Constructs the ViewModel-facing ``InputFromController``, eagerly
     /// subscribing the controller-side sinks (title text, toasts, dynamic
     /// bar-button updates) so the ViewModel can fire-and-forget those subjects.

@@ -20,34 +20,38 @@ import Foundation
 /// You almost never implement this protocol directly — ``AbstractViewModel/Input``
 /// is the synthesised conformance every concrete ViewModel inherits.
 ///
-/// ## Example — synthesised Input on a `BaseViewModel` subclass
+/// ## Example — synthesised Input on an `AbstractViewModel` subclass
 ///
 /// ```swift
-/// final class HomeViewModel: BaseViewModel<HomeStep, HomeInputFromView, HomeOutput> {
+/// final class HomeViewModel: AbstractViewModel<
+///     HomeInputFromView,
+///     HomeViewModel.Publishers,
+///     HomeStep
+/// > {
 ///     // `Input` here is `AbstractViewModel.Input`, with
 ///     //   FromView       = HomeInputFromView
-///     //   FromController = InputFromController       (fixed by BaseViewModel)
-///     override func transform(input: Input) -> HomeOutput {
+///     //   fromController = InputFromController       (pinned by the protocol)
+///     override func transform(input: Input) -> Output<Publishers, HomeStep> {
 ///         // Trigger an initial fetch the first time the controller appears.
-///         let onAppear = input.fromController.viewWillAppear.first()
-///
-///         let initialLoad = onAppear
+///         let initialLoad = input.fromController.viewWillAppear
+///             .first()
 ///             .flatMapLatest { [api] _ in api.fetchHome().replaceErrorWithEmpty() }
 ///
 ///         // The user-driven channel.
 ///         let userPullToRefresh = input.fromView.pullToRefresh
 ///             .flatMapLatest { [api] _ in api.fetchHome().replaceErrorWithEmpty() }
 ///
-///         let items = Publishers.Merge(initialLoad, userPullToRefresh)
-///             .map { $0.items }
+///         let items = Publishers.Merge(initialLoad, userPullToRefresh).map { $0.items }
 ///
-///         // Push the title back through the controller channel.
-///         input.fromController.viewDidLoad
-///             .map { "Home" }
-///             .sink { input.fromController.titleSubject.send($0) }
-///             .store(in: &cancellables)
-///
-///         return HomeOutput(items: items.eraseToAnyPublisher())
+///         return Output(
+///             publishers: Publishers(items: items.eraseToAnyPublisher()),
+///             navigation: Empty().eraseToAnyPublisher()
+///         ) {
+///             // Push the title back through the controller channel.
+///             input.fromController.viewDidLoad
+///                 .map { "Home" }
+///                 .sink { input.fromController.titleSubject.send($0) }
+///         }
 ///     }
 /// }
 /// ```
@@ -103,16 +107,12 @@ public protocol InputType {
     /// `struct` nested inside the concrete View type.
     associatedtype FromView
 
-    /// The controller-driven publishers — `viewDidLoad`, navigation-bar taps,
-    /// plus the write-back subjects the ViewModel uses to push title / toast
-    /// updates. The package's standard concrete type is ``InputFromController``.
-    associatedtype FromController
-
     /// The view channel.
     var fromView: FromView { get }
 
-    /// The controller channel.
-    var fromController: FromController { get }
+    /// The controller channel — pinned to ``InputFromController``, the
+    /// concrete write-back surface every ``SceneController`` builds.
+    var fromController: InputFromController { get }
 
     /// Designated initializer.
     ///
@@ -120,5 +120,5 @@ public protocol InputType {
     /// combining the `View.inputFromView` property with the lifecycle-derived
     /// ``InputFromController`` it builds itself. Tests can call this directly
     /// when wiring a synthetic `Input`.
-    init(fromView: FromView, fromController: FromController)
+    init(fromView: FromView, fromController: InputFromController)
 }

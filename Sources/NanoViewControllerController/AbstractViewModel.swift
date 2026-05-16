@@ -26,8 +26,8 @@ import NanoViewControllerCore
 ///   * `NavigationStep` — the enum of navigation transitions; use `Never`
 ///     for scenes that emit none.
 ///
-/// `FromController` is pinned to ``InputFromController`` (the controller-side
-/// channel `SceneController` builds) — every scene-bound view-model uses it.
+/// The controller channel is pinned to ``InputFromController`` (by the
+/// ``InputType`` protocol itself) — every scene-bound view-model uses it.
 /// View-models that don't run on a ``SceneController`` (embedded sub-views,
 /// for example) should conform to ``ViewModelType`` directly without
 /// subclassing `AbstractViewModel`.

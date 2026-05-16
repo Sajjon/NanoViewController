@@ -78,5 +78,7 @@ public typealias ContentView = UIView & ViewModelled
 ///     // …
 /// }
 /// ```
-public typealias Scene<View: ContentView> = SceneController<View> & TitledScene
-    where View.ViewModel.Input.FromController == InputFromController
+public typealias Scene<View: ContentView> = NanoViewController<View> & TitledScene
+
+@available(*, deprecated, renamed: "NanoViewController")
+public typealias SceneController<View: ContentView> = NanoViewController<View>

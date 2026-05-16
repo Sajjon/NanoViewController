@@ -1,6 +1,7 @@
 // MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
 
 import Foundation
+import NanoViewControllerCore
 
 /// The central contract every ViewModel conforms to.
 ///
@@ -33,8 +34,8 @@ import Foundation
 ///
 /// ```swift
 /// import Combine
+/// import NanoViewControllerController
 /// import NanoViewControllerCore
-/// import NanoViewControllerController     // for InputFromController
 /// import NanoViewControllerNavigation     // for Navigator
 ///
 /// /// What the user can do on the sign-up screen.

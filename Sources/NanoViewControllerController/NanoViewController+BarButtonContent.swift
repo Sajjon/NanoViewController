@@ -3,7 +3,7 @@
 import NanoViewControllerCore
 import UIKit
 
-public extension AbstractController {
+public extension NanoViewController {
     /// Installs `barButtonContent` as the navigation item's *right* bar
     /// button, wiring its tap to the controller's
     /// ``rightBarButtonAbstractTarget`` (which in turn pushes to
@@ -22,7 +22,7 @@ public extension AbstractController {
     /// ## Example — imperative use from a custom subclass
     ///
     /// ```swift
-    /// final class CustomScene: SceneController<MyView>, TitledScene {
+    /// final class CustomScene: NanoViewController<MyView>, TitledScene {
     ///     static var title: String { "Custom" }
     ///     override func viewDidLoad() {
     ///         super.viewDidLoad()
