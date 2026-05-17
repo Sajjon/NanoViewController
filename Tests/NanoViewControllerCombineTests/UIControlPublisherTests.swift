@@ -16,39 +16,20 @@ import XCTest
 ///     `subscriber = nil` from inside the same main-thread block as the
 ///     `removeTarget` call so there's no read/write race.
 ///
-/// We deliberately do **not** exercise the publisher's value-delivery path
-/// here. `UIControl.sendActions(for:)` does not fire registered targets in
-/// the iOS 26 simulator without actual touch tracking — that's a UIKit
-/// test-environment quirk, not a publisher concern. End-to-end coverage
-/// lives in the `SignUpDemo` example app.
+/// `UIControl.sendActions(for:)` does not fire registered targets in the iOS
+/// 26 simulator without actual touch tracking, so the value-delivery test
+/// invokes the registered target/action directly.
 @MainActor
 final class UIControlPublisherTests: XCTestCase {
-    private var window: UIWindow!
-
-    override func setUp() {
-        super.setUp()
-        window = UIWindow(frame: CGRect(x: 0, y: 0, width: 100, height: 100))
-        window.makeKeyAndVisible()
-    }
-
-    override func tearDown() {
-        window?.isHidden = true
-        window = nil
-        super.tearDown()
-    }
-
-    private func makeHostedButton() -> UIButton {
-        let button = UIButton(type: .system)
-        button.frame = CGRect(x: 0, y: 0, width: 50, height: 50)
-        window.addSubview(button)
-        return button
+    private func makeButton() -> UIButton {
+        UIButton(type: .system)
     }
 
     // MARK: - On-main subscribe + cancel (smoke)
 
     func test_subscribeAndCancelOnMain_doesNotTrap() {
         // ARRANGE
-        let button = makeHostedButton()
+        let button = makeButton()
         let cancellable = button.publisher(for: .touchUpInside).sink { _ in }
 
         // ACT
@@ -61,7 +42,7 @@ final class UIControlPublisherTests: XCTestCase {
 
     func test_repeatedSubscribeCancelCycles_doNotLeak() {
         // ARRANGE
-        let button = makeHostedButton()
+        let button = makeButton()
 
         // ACT
         for _ in 0 ..< 50 {
@@ -75,11 +56,29 @@ final class UIControlPublisherTests: XCTestCase {
         XCTAssertEqual(button.allTargets.count, 0)
     }
 
+    func test_tapPublisherForwardsRegisteredTargetAction() throws {
+        // ARRANGE
+        let button = makeButton()
+        var tapCount = 0
+        let cancellable = button.tapPublisher.sink { tapCount += 1 }
+
+        let target = try XCTUnwrap(button.allTargets.first as? NSObject)
+        let actions = try XCTUnwrap(button.actions(forTarget: target, forControlEvent: .touchUpInside))
+
+        // ACT
+        target.perform(NSSelectorFromString(actions[0]))
+
+        // ASSERT
+        XCTAssertEqual(actions, ["fire"])
+        XCTAssertEqual(tapCount, 1)
+        cancellable.cancel()
+    }
+
     // MARK: - Off-main cancel (the AnyCancellable.deinit path)
 
     func test_cancelOffMain_doesNotTrap() async {
         // ARRANGE
-        let button = await MainActor.run { makeHostedButton() }
+        let button = await MainActor.run { makeButton() }
         // Build the subscription on main. Wrap the resulting cancellable in
         // an `@unchecked Sendable` box so we can hand it to `Task.detached`
         // without `AnyCancellable` itself needing to be `Sendable`.
@@ -116,14 +115,12 @@ final class UIControlPublisherTests: XCTestCase {
 
         // ACT
         autoreleasepool {
-            let button = makeHostedButton()
+            let button = makeButton()
             weakButton = button
             // Subscribe and immediately cancel. After the autoreleasepool
-            // drains and the window releases the button, the publisher
-            // should not be the last strong reference.
+            // drains, the publisher should not be the last strong reference.
             let cancellable = button.publisher(for: .touchUpInside).sink { _ in }
             cancellable.cancel()
-            button.removeFromSuperview()
         }
 
         // ASSERT
