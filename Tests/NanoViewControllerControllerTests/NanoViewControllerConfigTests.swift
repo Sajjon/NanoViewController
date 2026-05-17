@@ -8,6 +8,22 @@ import XCTest
 
 @MainActor
 final class NanoViewControllerConfigTests: XCTestCase {
+    func test_controllerConfig_localizedTitleInitializer_resolvesTitleKey() {
+        let config = ControllerConfig(
+            titleKey: "Localized Configured",
+            hidesBackButton: true,
+            leftBarButton: BarButtonContent(system: .cancel),
+            rightBarButton: BarButtonContent(system: .done),
+            navigationBarLayout: .testHidden
+        )
+
+        XCTAssertEqual(config.title, "Localized Configured")
+        XCTAssertTrue(config.hidesBackButton)
+        XCTAssertEqual(config.leftBarButton?.systemItem, .cancel)
+        XCTAssertEqual(config.rightBarButton?.systemItem, .done)
+        XCTAssertEqual(config.navigationBarLayout?.visibility, .hidden(animated: false))
+    }
+
     func test_viewDidLoad_appliesStaticControllerConfig() {
         let scene = ConfiguredScene(viewModel: ConfiguredViewModel())
 
@@ -117,5 +133,14 @@ private extension NavigationBarLayout {
             titleFont: .systemFont(ofSize: 17),
             titleColor: .white
         )
+    }
+}
+
+private extension BarButtonContent {
+    var systemItem: UIBarButtonItem.SystemItem? {
+        guard case let .system(systemItem) = type else {
+            return nil
+        }
+        return systemItem
     }
 }

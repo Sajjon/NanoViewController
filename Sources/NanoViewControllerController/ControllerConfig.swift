@@ -1,5 +1,7 @@
 // MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
 
+import Foundation
+
 /// Static controller chrome configuration for a ``NanoViewController``.
 ///
 /// The default value is intentionally empty: no title, no static bar buttons,
@@ -36,6 +38,30 @@ public struct ControllerConfig: Sendable {
         self.leftBarButton = leftBarButton
         self.rightBarButton = rightBarButton
         self.navigationBarLayout = navigationBarLayout
+    }
+
+    /// Convenience initializer for localized navigation titles.
+    ///
+    /// This keeps static controller chrome call sites readable when titles
+    /// come from string-catalog generated ``LocalizedStringResource`` values:
+    ///
+    /// ```swift
+    /// static let config = ControllerConfig(titleKey: .CreateWallet.title)
+    /// ```
+    public init(
+        titleKey: LocalizedStringResource,
+        hidesBackButton: Bool = false,
+        leftBarButton: BarButtonContent? = nil,
+        rightBarButton: BarButtonContent? = nil,
+        navigationBarLayout: NavigationBarLayout? = nil
+    ) {
+        self.init(
+            title: String(localized: titleKey),
+            hidesBackButton: hidesBackButton,
+            leftBarButton: leftBarButton,
+            rightBarButton: rightBarButton,
+            navigationBarLayout: navigationBarLayout
+        )
     }
 }
 
