@@ -11,7 +11,7 @@ import Foundation
 ///     Owned by the View, exposed as `inputFromView`.
 ///   * ``fromController`` — controller lifecycle events plus *write-back*
 ///     subjects (title updates, toast dispatch, dynamic bar-button content).
-///     Owned by ``SceneController``, exposed as ``InputFromController``.
+///     Owned by ``NanoViewController``, exposed as ``InputFromController``.
 ///
 /// Splitting them this way keeps the View free of any UIKit-controller knowledge
 /// and lets the ViewModel react to lifecycle events (e.g. fetch on
@@ -20,34 +20,43 @@ import Foundation
 /// You almost never implement this protocol directly — ``AbstractViewModel/Input``
 /// is the synthesised conformance every concrete ViewModel inherits.
 ///
-/// ## Example — synthesised Input on a `BaseViewModel` subclass
+/// ## Example — synthesised Input on an `AbstractViewModel` subclass
 ///
 /// ```swift
-/// final class HomeViewModel: BaseViewModel<HomeStep, HomeInputFromView, HomeOutput> {
+/// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
+/// import NanoViewControllerCore
+///
+/// final class HomeViewModel: AbstractViewModel<
+///     HomeInputFromView,
+///     HomeViewModel.Publishers,
+///     HomeStep
+/// > {
 ///     // `Input` here is `AbstractViewModel.Input`, with
 ///     //   FromView       = HomeInputFromView
-///     //   FromController = InputFromController       (fixed by BaseViewModel)
-///     override func transform(input: Input) -> HomeOutput {
+///     //   fromController = InputFromController       (pinned by the protocol)
+///     override func transform(input: Input) -> Output<Publishers, HomeStep> {
 ///         // Trigger an initial fetch the first time the controller appears.
-///         let onAppear = input.fromController.viewWillAppear.first()
-///
-///         let initialLoad = onAppear
+///         let initialLoad = input.fromController.viewWillAppear
+///             .first()
 ///             .flatMapLatest { [api] _ in api.fetchHome().replaceErrorWithEmpty() }
 ///
 ///         // The user-driven channel.
 ///         let userPullToRefresh = input.fromView.pullToRefresh
 ///             .flatMapLatest { [api] _ in api.fetchHome().replaceErrorWithEmpty() }
 ///
-///         let items = Publishers.Merge(initialLoad, userPullToRefresh)
-///             .map { $0.items }
+///         let items = Publishers.Merge(initialLoad, userPullToRefresh).map { $0.items }
 ///
-///         // Push the title back through the controller channel.
-///         input.fromController.viewDidLoad
-///             .map { "Home" }
-///             .sink { input.fromController.titleSubject.send($0) }
-///             .store(in: &cancellables)
-///
-///         return HomeOutput(items: items.eraseToAnyPublisher())
+///         return Output(
+///             publishers: Publishers(items: items.eraseToAnyPublisher()),
+///             navigation: Empty().eraseToAnyPublisher()
+///         ) {
+///             // Push the title back through the controller channel.
+///             input.fromController.viewDidLoad
+///                 .map { "Home" }
+///                 .sink { input.fromController.titleSubject.send($0) }
+///         }
 ///     }
 /// }
 /// ```
@@ -55,6 +64,9 @@ import Foundation
 /// ## Example — building an `Input` in a unit test
 ///
 /// ```swift
+/// import Combine
+/// import NanoViewControllerController
+///
 /// // Stand up a synthetic Input so we can drive the ViewModel from a test.
 /// let usernameSubject = CurrentValueSubject<String, Never>("")
 /// let passwordSubject = CurrentValueSubject<String, Never>("")
@@ -95,7 +107,7 @@ import Foundation
 /// ```
 ///
 /// `@MainActor` because the input is constructed and consumed inside
-/// `SceneController` (a `UIViewController` subclass), so the whole
+/// `NanoViewController` (a `UIViewController` subclass), so the whole
 /// view-model pipeline lives on the main actor.
 @MainActor
 public protocol InputType {
@@ -103,22 +115,18 @@ public protocol InputType {
     /// `struct` nested inside the concrete View type.
     associatedtype FromView
 
-    /// The controller-driven publishers — `viewDidLoad`, navigation-bar taps,
-    /// plus the write-back subjects the ViewModel uses to push title / toast
-    /// updates. The package's standard concrete type is ``InputFromController``.
-    associatedtype FromController
-
     /// The view channel.
     var fromView: FromView { get }
 
-    /// The controller channel.
-    var fromController: FromController { get }
+    /// The controller channel — pinned to ``InputFromController``, the
+    /// concrete write-back surface every ``NanoViewController`` builds.
+    var fromController: InputFromController { get }
 
     /// Designated initializer.
     ///
-    /// ``SceneController`` constructs this struct on the ViewModel's behalf by
+    /// ``NanoViewController`` constructs this struct on the ViewModel's behalf by
     /// combining the `View.inputFromView` property with the lifecycle-derived
     /// ``InputFromController`` it builds itself. Tests can call this directly
     /// when wiring a synthetic `Input`.
-    init(fromView: FromView, fromController: FromController)
+    init(fromView: FromView, fromController: InputFromController)
 }

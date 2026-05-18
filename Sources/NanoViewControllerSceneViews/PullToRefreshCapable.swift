@@ -26,8 +26,8 @@ import Foundation
 ///     var inputFromView: HomeInputFromView {
 ///         HomeInputFromView(pullToRefresh: pullToRefreshTriggerPublisher)
 ///     }
-///     func populate(with output: HomeViewModel.OutputVM) -> [AnyCancellable] {
-///         [output.isLoading --> isRefreshingBinder]
+///     func populate(with publishers: HomeViewModel.Publishers) -> [AnyCancellable] {
+///         publishers.isLoading --> isRefreshingBinder
 ///     }
 /// }
 /// ```

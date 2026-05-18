@@ -3,6 +3,7 @@
 import Combine
 import NanoViewControllerController
 import NanoViewControllerCore
+import NanoViewControllerNavigation
 
 /// User outcomes the Home scene can emit.
 public enum HomeUserAction: Sendable {
@@ -10,11 +11,11 @@ public enum HomeUserAction: Sendable {
 }
 
 /// Drives `HomeView`: produces a static "Welcome, <name>" greeting + forwards
-/// the logout-button tap to the coordinator.
-public final class HomeViewModel: BaseViewModel<
-    HomeUserAction,
+/// the logout-button tap to the coordinator via the navigation publisher.
+public final class HomeViewModel: AbstractViewModel<
     HomeViewModel.InputFromView,
-    HomeViewModel.Output
+    HomeViewModel.Publishers,
+    HomeUserAction
 > {
     private let user: SignedUpUser
 
@@ -23,17 +24,21 @@ public final class HomeViewModel: BaseViewModel<
         super.init()
     }
 
-    override public func transform(input: Input) -> Output {
-        input.fromView.logoutTrigger
-            .sink { [weak navigator] in navigator?.next(.logout) }
-            .store(in: &cancellables)
+    override public func transform(input: Input) -> Output<Publishers, HomeUserAction> {
+        let navigator = Navigator<HomeUserAction>()
 
-        // Greeting is a one-shot publisher — no upstream state changes after
-        // the user lands here, so `Just` is the simplest fit.
         return Output(
-            greeting: Just("Welcome, \(user.name)!").eraseToAnyPublisher(),
-            email: Just(user.email).eraseToAnyPublisher()
-        )
+            publishers: Publishers(
+                // Greeting is a one-shot publisher — no upstream state changes
+                // after the user lands here, so `Just` is the simplest fit.
+                greeting: Just("Welcome, \(user.name)!").eraseToAnyPublisher(),
+                email: Just(user.email).eraseToAnyPublisher()
+            ),
+            navigation: navigator.navigation
+        ) {
+            input.fromView.logoutTrigger
+                .sink { [navigator] in navigator.next(.logout) }
+        }
     }
 }
 
@@ -48,7 +53,7 @@ public extension HomeViewModel {
     }
 
     /// Reactive bindings the view installs.
-    struct Output {
+    struct Publishers {
         public let greeting: AnyPublisher<String, Never>
         public let email: AnyPublisher<String, Never>
     }

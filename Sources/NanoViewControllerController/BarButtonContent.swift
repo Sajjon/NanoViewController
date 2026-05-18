@@ -12,31 +12,34 @@ import UIKit
 /// ## Example — static bar-button content
 ///
 /// ```swift
-/// final class SignUpScene: Scene<SignUpView>, RightBarButtonContentMaking {
-///     static var title: String { "Sign up" }
-///     // A `Skip` button on the top-right.
-///     static var makeRightContent: BarButtonContent {
-///         BarButtonContent(title: "Skip", style: .plain)
-///     }
+/// final class SignUpScene: NanoViewController<SignUpView>, ControllerConfigProviding {
+///     static let config = ControllerConfig(
+///         title: "Sign up",
+///         rightBarButton: BarButtonContent(title: "Skip", style: .plain)
+///     )
 /// }
 /// ```
 ///
 /// ## Example — dynamic bar-button content driven by a publisher
 ///
 /// ```swift
-/// final class EditProfileViewModel: BaseViewModel<…> {
-///     override func transform(input: Input) -> Output {
+/// final class EditProfileViewModel: AbstractViewModel<…, EditProfileStep> {
+///     override func transform(input: Input) -> Output<Publishers, EditProfileStep> {
+///         let navigator = Navigator<EditProfileStep>()
 ///         let canSave = input.fromView.firstName.combineLatest(input.fromView.lastName)
 ///             .map { !$0.isEmpty && !$1.isEmpty }
 ///
-///         // Update the right bar button's enabled-ness via dynamic content.
-///         canSave
-///             .map { enabled in
-///                 BarButtonContent(title: "Save", style: enabled ? .done : .plain)
-///             }
-///             .sink { input.fromController.rightBarButtonContentSubject.send($0) }
-///             .store(in: &cancellables)
-///         // …
+///         return Output(
+///             publishers: Publishers(/* … */),
+///             navigation: navigator.navigation
+///         ) {
+///             // Update the right bar button's enabled-ness via dynamic content.
+///             canSave
+///                 .map { enabled in
+///                     BarButtonContent(title: "Save", style: enabled ? .done : .plain)
+///                 }
+///                 .sink { input.fromController.rightBarButtonContentSubject.send($0) }
+///         }
 ///     }
 /// }
 /// ```
@@ -124,10 +127,10 @@ public extension BarButtonContent {
     /// the raw `SystemItem` to the matching `UIBarButtonItem` initialiser,
     /// which already encodes its own visual style.
     ///
-    /// ``AbstractController/setRightBarButtonUsing(content:)`` and the left-
+    /// ``NanoViewController/setRightBarButtonUsing(content:)`` and the left-
     /// hand variant call this with the controller's
-    /// ``AbstractController/rightBarButtonAbstractTarget`` /
-    /// ``AbstractController/leftBarButtonAbstractTarget`` and
+    /// ``NanoViewController/rightBarButtonAbstractTarget`` /
+    /// ``NanoViewController/leftBarButtonAbstractTarget`` and
     /// `#selector(AbstractTarget.pressed)`. You rarely call this directly.
     ///
     /// - Parameters:

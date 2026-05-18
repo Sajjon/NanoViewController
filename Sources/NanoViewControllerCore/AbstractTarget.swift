@@ -12,9 +12,10 @@ import Foundation
 /// call, and it forwards each invocation through a ``Combine/PassthroughSubject``
 /// the rest of the app subscribes to.
 ///
-/// ``AbstractController`` keeps two long-lived `AbstractTarget` instances —
-/// one each for the left and right navigation bar buttons — and exposes the
-/// matching publishers to ViewModels via ``InputFromController``.
+/// ``NanoViewControllerController/NanoViewController`` keeps two long-lived
+/// `AbstractTarget` instances — one each for the left and right navigation bar
+/// buttons — and exposes the matching publishers to ViewModels via
+/// ``NanoViewControllerController/InputFromController``.
 ///
 /// ## Why is this its own class instead of a closure?
 ///
@@ -58,10 +59,9 @@ import Foundation
 /// ```
 ///
 /// In normal app code you'll never need to build one of these directly —
-/// ``AbstractController`` already exposes
-/// ``AbstractController/leftBarButtonAbstractTarget`` and
-/// ``AbstractController/rightBarButtonAbstractTarget`` for navigation bar
-/// buttons, and pure Combine extensions on `UIControl` (see
+/// ``NanoViewControllerController/NanoViewController`` already exposes
+/// `leftBarButtonAbstractTarget` and `rightBarButtonAbstractTarget` for
+/// navigation bar buttons, and pure Combine extensions on `UIControl` (see
 /// `UIControl+Publisher.swift`) cover regular controls.
 ///
 /// `@MainActor` because UIKit dispatches target/action selectors on the main
@@ -80,7 +80,7 @@ public class AbstractTarget {
     /// Designated initialiser — captures the subject this target forwards into.
     ///
     /// - Parameter triggerSubject: The subject every selector call should push
-    ///   a `()` value into. Typically owned by an `AbstractController`.
+    ///   a `()` value into. Typically owned by a `NanoViewController`.
     public init(triggerSubject: PassthroughSubject<Void, Never>) {
         self.triggerSubject = triggerSubject
     }

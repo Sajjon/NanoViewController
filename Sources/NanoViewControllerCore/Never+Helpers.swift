@@ -56,8 +56,9 @@ public func incorrectImplementation(_ message: CustomStringConvertible) -> Never
 /// expected to override.
 ///
 /// Used as the body of a base-class method whose default implementation makes
-/// no sense — for example, ``AbstractViewModel/transform(input:)`` and
-/// ``BaseCoordinator/start(didStart:)``.
+/// no sense — for example,
+/// ``NanoViewControllerController/AbstractViewModel/transform(input:)`` and
+/// ``NanoViewControllerNavigation/BaseCoordinator/start(didStart:)``.
 ///
 /// ## Example
 ///

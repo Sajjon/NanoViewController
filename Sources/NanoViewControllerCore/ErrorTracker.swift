@@ -22,8 +22,17 @@ import Foundation
 /// ## Example — global error toast plus per-chain typed handling
 ///
 /// ```swift
-/// final class HomeViewModel: BaseViewModel<HomeStep, HomeInputFromView, HomeOutput> {
-///     override func transform(input: Input) -> HomeOutput {
+/// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
+/// import NanoViewControllerCore
+///
+/// final class HomeViewModel: AbstractViewModel<
+///     HomeInputFromView,
+///     HomeViewModel.Publishers,
+///     Never
+/// > {
+///     override func transform(input: Input) -> Output<Publishers, Never> {
 ///         let activity = ActivityIndicator()
 ///         let errors   = ErrorTracker()
 ///
@@ -43,20 +52,21 @@ import Foundation
 ///                     .replaceErrorWithEmpty()
 ///             }
 ///
-///         // Every captured error becomes a toast.
-///         errors.asPublisher()
-///             .map { Toast($0.localizedDescription) }
-///             .sink { input.fromController.toastSubject.send($0) }
-///             .store(in: &cancellables)
-///
 ///         // Or use the typed projection for a typed-error case.
 ///         let validationMessage = errors.compactMap { ($0 as? ValidationError)?.message }
 ///
-///         return HomeOutput(
-///             items:    Publishers.Merge(initialFetch, userRefresh).map(\.items).eraseToAnyPublisher(),
-///             isLoading: activity.asPublisher(),
-///             validationMessage: validationMessage
-///         )
+///         return Output(
+///             publishers: Publishers(
+///                 items: Combine.Publishers.Merge(initialFetch, userRefresh).map(\.items).eraseToAnyPublisher(),
+///                 isLoading: activity.asPublisher(),
+///                 validationMessage: validationMessage
+///             )
+///         ) {
+///             // Every captured error becomes a toast.
+///             errors.asPublisher()
+///                 .map { Toast($0.localizedDescription) }
+///                 .sink { input.fromController.toastSubject.send($0) }
+///         }
 ///     }
 /// }
 /// ```
@@ -148,12 +158,13 @@ public extension Publisher {
     /// ## Example
     ///
     /// ```swift
-    /// api.uploadAvatar(image)
-    ///     .trackActivity(activity)
-    ///     .trackError(errors)              // shared tracker
-    ///     .replaceErrorWithEmpty()         // local chain stays Never-failing
-    ///     .sink { [navigator] in navigator.next(.uploaded) }
-    ///     .store(in: &cancellables)
+    /// return Output(publishers: Publishers(), navigation: navigator.navigation) {
+    ///     api.uploadAvatar(image)
+    ///         .trackActivity(activity)
+    ///         .trackError(errors)              // shared tracker
+    ///         .replaceErrorWithEmpty()         // local chain stays Never-failing
+    ///         .sink { [navigator] in navigator.next(.uploaded) }
+    /// }
     /// ```
     ///
     /// - Parameter tracker: The `ErrorTracker` to forward failures into.

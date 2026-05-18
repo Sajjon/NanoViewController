@@ -54,4 +54,17 @@ final class NanoViewControllerCoreSmokeTests: XCTestCase {
         trackerCancellable.cancel()
         pipelineCancellable.cancel()
     }
+
+    @MainActor
+    func test_output_designatedInitializerDefaultsToEmptySubscriptions() {
+        // ACT
+        let output = Output(
+            publishers: "publishers",
+            navigation: Empty<Int, Never>().eraseToAnyPublisher()
+        )
+
+        // ASSERT
+        XCTAssertEqual(output.publishers, "publishers")
+        XCTAssertTrue(output.cancellables.isEmpty)
+    }
 }

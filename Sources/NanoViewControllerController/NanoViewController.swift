@@ -8,21 +8,21 @@ import UIKit
 /// The "Single-Line Controller" base class — generic scene glue that hosts
 /// any `(UIView, ViewModelled)` pair without per-scene controller code.
 ///
-/// `SceneController<View>`:
+/// `NanoViewController<View>`:
 ///
 ///   1. Instantiates `View` empty via ``EmptyInitializable``.
 ///   2. Builds an ``InputFromController`` from its own lifecycle, bar-button
 ///      and write-back subjects.
 ///   3. Stitches the View's ``ViewModelled/inputFromView`` together with that
 ///      controller-side input and calls ``ViewModelType/transform(input:)``
-///      on the ViewModel.
-///   4. Binds the resulting `OutputVM` back into the View via
+///      on the ViewModel, receiving an ``Output``.
+///   4. Stores the cancellables carried in the ``Output``, then binds the
+///      ``Output/publishers`` bag back into the View via
 ///      ``ViewModelled/populate(with:)``.
 ///
 /// This is the load-bearing class of the package — coordinators push instances
-/// of `SceneController<…>` directly through the ``Scene`` typealias, and you
-/// almost never need to subclass it. The whole point is that *one line of
-/// code* per screen ("push this scene with this view-model") is enough.
+/// of `NanoViewController<…>` directly, and you almost never need to subclass
+/// it beyond declaring a concrete screen type and optional ``ControllerConfig``.
 ///
 /// ## Example — coordinator pushing a scene
 ///
@@ -37,9 +37,8 @@ import UIKit
 /// }
 /// ```
 ///
-/// `WelcomeScene` is just a `Scene<WelcomeView>` typealias — there is *no*
-/// hand-written controller class for the welcome screen. `SceneController`
-/// is doing all the work generically.
+/// `WelcomeScene` can be an empty `NanoViewController<WelcomeView>` subclass.
+/// `NanoViewController` is doing all the work generically.
 ///
 /// ## Subclassing — when (rarely) needed
 ///
@@ -47,21 +46,40 @@ import UIKit
 ///
 ///   * change ``rootBackgroundColor`` — your app's brand background,
 ///   * substitute a test ``clock`` for synchronous toast auto-dismiss,
-///   * conform to ``NavigationBarLayoutOwner`` to pin a per-scene nav-bar
-///     layout (translucent / opaque / hidden).
+///   * provide ``ControllerConfigProviding/config`` to set static title, bar
+///     buttons, back-button behavior, and nav-bar layout.
 ///
 /// ```swift
-/// final class BrandedWelcomeScene: SceneController<WelcomeView>, TitledScene, NavigationBarLayoutOwner {
-///     static var title: String { "Welcome" }
+/// final class BrandedWelcomeScene: NanoViewController<WelcomeView>, ControllerConfigProviding {
+///     static let config = ControllerConfig(
+///         title: "Welcome",
+///         navigationBarLayout: .opaque(brand: .primary)
+///     )
+///
 ///     override var rootBackgroundColor: UIColor { .brandBackground }
-///     var navigationBarLayout: NavigationBarLayout { .opaque(brand: .primary) }
 /// }
 /// ```
-open class SceneController<View: ContentView>: AbstractController
-    where View.ViewModel.Input.FromController == InputFromController
-{
+open class NanoViewController<View: ContentView>: UIViewController {
     /// Convenience alias for the view's ViewModel type.
     public typealias ViewModel = View.ViewModel
+
+    /// Subject fired every time the navigation-item *right* bar button is
+    /// pressed. Forwarded to the ViewModel as
+    /// ``InputFromController/rightBarButtonTrigger``.
+    public let rightBarButtonSubject = PassthroughSubject<Void, Never>()
+
+    /// Subject fired every time the navigation-item *left* bar button is
+    /// pressed. Forwarded to the ViewModel as
+    /// ``InputFromController/leftBarButtonTrigger``.
+    public let leftBarButtonSubject = PassthroughSubject<Void, Never>()
+
+    /// `@objc` target object UIKit invokes for the right bar button's action
+    /// selector.
+    public lazy var rightBarButtonAbstractTarget = AbstractTarget(triggerSubject: rightBarButtonSubject)
+
+    /// `@objc` target object UIKit invokes for the left bar button's action
+    /// selector.
+    public lazy var leftBarButtonAbstractTarget = AbstractTarget(triggerSubject: leftBarButtonSubject)
 
     /// Bag of Combine subscriptions owned by this controller (navigation-bar
     /// bindings, toasts, title updates, view ↔ view-model bindings).
@@ -70,6 +88,16 @@ open class SceneController<View: ContentView>: AbstractController
 
     /// The ViewModel injected by the coordinator at construction time.
     public let viewModel: ViewModel
+
+    /// Backing subject the controller forwards `Output.navigation` into.
+    /// Exists from construction so coordinators can subscribe to
+    /// ``navigation`` without an ordering dance with `bindViewToViewModel`.
+    private let navigationSubject = PassthroughSubject<ViewModel.NavigationStep, Never>()
+
+    /// The navigation publisher the coordinator subscribes to. Use this from
+    /// coordinator hookup code instead of reaching into the ViewModel.
+    public lazy var navigation: AnyPublisher<ViewModel.NavigationStep, Never> =
+        navigationSubject.eraseToAnyPublisher()
 
     /// Clock used to auto-dismiss toasts emitted via
     /// ``InputFromController/toastSubject``.
@@ -85,9 +113,18 @@ open class SceneController<View: ContentView>: AbstractController
     /// `view.backgroundColor` is set to in `viewDidLoad`.
     ///
     /// Defaults to `.systemBackground`. Subclasses (or app-level extensions
-    /// on `SceneController`) override this to apply a brand background.
+    /// on `NanoViewController`) override this to apply a brand background.
     open var rootBackgroundColor: UIColor {
         .systemBackground
+    }
+
+    /// Instance-level chrome configuration.
+    ///
+    /// Override this when a controller's chrome depends on construction-time state.
+    /// Otherwise conform the concrete subclass to ``ControllerConfigProviding``
+    /// and declare a `static let config`.
+    open var controllerConfig: ControllerConfig {
+        (type(of: self) as? ControllerConfigProviding.Type)?.config ?? .default
     }
 
     /// Fires when `viewDidLoad` runs. Piped into
@@ -115,14 +152,15 @@ open class SceneController<View: ContentView>: AbstractController
 
     /// Designated initializer.
     ///
-    /// Coordinators call this with a freshly-constructed ViewModel. ``setup()``
-    /// runs eagerly so the View has live publishers before `viewDidLoad`.
+    /// Coordinators call this with a freshly-constructed ViewModel.
+    /// ``bindViewToViewModel()`` runs eagerly so the View has live publishers
+    /// before `viewDidLoad`.
     ///
     /// - Parameter viewModel: The ViewModel for this scene. Owned by the controller.
     public required init(viewModel: ViewModel) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
-        setup()
+        bindViewToViewModel()
     }
 
     /// Unavailable — Interface Builder is not supported. Traps to enforce
@@ -138,12 +176,11 @@ open class SceneController<View: ContentView>: AbstractController
     /// swipe-back), then fires the `viewDidLoad` lifecycle subject so the
     /// ViewModel's pipelines see it.
     ///
-    /// Each opt-in protocol (``TitledScene``,
-    /// ``RightBarButtonContentMaking``, ``LeftBarButtonContentMaking``,
-    /// ``BackButtonHiding``) is detected via runtime cast — there is no
-    /// required override in subclasses, and absence is the no-op default.
+    /// Static chrome is read from ``controllerConfig``. Dynamic bar-button
+    /// changes still flow through ``InputFromController`` subjects.
     override open func viewDidLoad() {
         super.viewDidLoad()
+        let config = controllerConfig
 
         // App-wide background colour goes on the controller's view (visible
         // behind the content view during animations); content view is
@@ -159,33 +196,27 @@ open class SceneController<View: ContentView>: AbstractController
             rootContentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        // Auto-set the navigation title only if a non-empty `TitledScene.title`
-        // is provided. `case let sceneTitle = …` is just a destructuring
-        // binding — could be a plain `let`.
-        if let titled = self as? TitledScene, case let sceneTitle = titled.sceneTitle, !sceneTitle.isEmpty {
+        // Auto-set the navigation title only if a non-empty title is provided.
+        if let sceneTitle = config.title, !sceneTitle.isEmpty {
             title = sceneTitle
         }
 
         // Opt-in static bar-button installation. Dynamic per-screen changes go
         // through the `…BarButtonContentSubject` instead (see
         // `makeAndSubscribeToInputFromController`).
-        if let rightButtonMaker = self as? RightBarButtonContentMaking {
-            rightButtonMaker.setRightBarButton(for: self)
+        if let rightBarButton = config.rightBarButton {
+            setRightBarButtonUsing(content: rightBarButton)
         }
 
-        if let leftButtonMaker = self as? LeftBarButtonContentMaking {
-            leftButtonMaker.setLeftBarButton(for: self)
+        if let leftBarButton = config.leftBarButton {
+            setLeftBarButtonUsing(content: leftBarButton)
         }
 
-        // BackButtonHiding screens both hide the chevron AND disable
-        // interactive pop — typically used on flow-terminating screens like
-        // a successful-create confirmation, where backing up would re-enter
-        // an inconsistent state.
-        if self is BackButtonHiding {
+        if config.hidesBackButton {
             navigationItem.hidesBackButton = true
         }
 
-        navigationController?.interactivePopGestureRecognizer?.isEnabled = !(self is BackButtonHiding)
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = !config.hidesBackButton
 
         // Last — fire the lifecycle pulse only after all chrome is in place,
         // so any view-model handler observing `viewDidLoad` can safely assume
@@ -197,7 +228,7 @@ open class SceneController<View: ContentView>: AbstractController
     /// previous scene) and forwards the lifecycle event.
     override open func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        applyLayoutIfNeeded()
+        applyLayoutIfNeeded(controllerConfig.navigationBarLayout)
         viewWillAppearSubject.send(())
     }
 
@@ -206,19 +237,18 @@ open class SceneController<View: ContentView>: AbstractController
         super.viewDidAppear(animated)
         viewDidAppearSubject.send(())
     }
+
+    /// Default `description` is the runtime class name — handy in logs to
+    /// identify the concrete `NanoViewController<…>` specialisation without an
+    /// inheritance dance.
+    override open var description: String {
+        "\(type(of: self))"
+    }
 }
 
 // MARK: Private
 
-private extension SceneController {
-    /// Called from the designated initializer.
-    ///
-    /// Currently a thin wrapper so future setup steps can be added without
-    /// touching the init body.
-    func setup() {
-        bindViewToViewModel()
-    }
-
+private extension NanoViewController {
     /// Constructs the ViewModel-facing ``InputFromController``, eagerly
     /// subscribing the controller-side sinks (title text, toasts, dynamic
     /// bar-button updates) so the ViewModel can fire-and-forget those subjects.
@@ -269,11 +299,12 @@ private extension SceneController {
     ///
     ///   * View → InputFromView,
     ///   * Controller → InputFromController,
-    ///   * ViewModel.transform(_:) → Output,
+    ///   * ViewModel.transform(_:) → Output<Publishers>,
     ///   * View.populate(with:) → bindings.
     ///
-    /// Each cancellable returned by `populate` is stored so the bindings
-    /// live as long as this controller does.
+    /// Every cancellable carried in the ``Output`` from `transform`, plus
+    /// every cancellable returned by `populate`, is stored so all bindings
+    /// and side-effect subscriptions live as long as this controller does.
     func bindViewToViewModel() {
         let inputFromView = rootContentView.inputFromView
         let inputFromController = makeAndSubscribeToInputFromController()
@@ -281,7 +312,16 @@ private extension SceneController {
         let input = ViewModel.Input(fromView: inputFromView, fromController: inputFromController)
         let output = viewModel.transform(input: input)
 
-        rootContentView.populate(with: output).forEach { $0.store(in: &cancellables) }
+        cancellables.formUnion(output.cancellables)
+        cancellables.formUnion(rootContentView.populate(with: output.publishers))
+
+        // Forward navigation through the controller's own subject so coordinators
+        // see a stable publisher regardless of when they subscribe. The upstream
+        // (typically a `Navigator` constructed inside `transform`) stays alive
+        // via the `[navigator]` captures inside `output.cancellables`.
+        output.navigation
+            .subscribe(navigationSubject)
+            .store(in: &cancellables)
     }
 
     /// Drives ``NavigationBarLayoutingNavigationController`` to apply the
@@ -290,10 +330,11 @@ private extension SceneController {
     /// Logic ladder:
     ///   1. No nav controller? Nothing to do.
     ///   2. Nav controller is the wrong class? Programmer error — crash loudly.
-    ///   3. Scene doesn't own a layout? No-op (the previous layout stays).
+    ///   3. Controller doesn't own a layout? No-op (the previous layout stays).
     ///   4. Same layout as last applied? Skip the work (avoid pointless animations).
     ///   5. Otherwise apply the new layout.
-    func applyLayoutIfNeeded() {
+    func applyLayoutIfNeeded(_ layout: NavigationBarLayout?) {
+        guard let layout else { return }
         guard let navigationController else { return }
         guard let barLayoutingNavController = navigationController as? NavigationBarLayoutingNavigationController else {
             incorrectImplementation(
@@ -301,16 +342,18 @@ private extension SceneController {
             )
         }
 
-        guard let barLayoutOwner = self as? NavigationBarLayoutOwner else {
-            return
-        }
-
         if let lastLayout = barLayoutingNavController.lastLayout {
-            let layout = barLayoutOwner.navigationBarLayout
             guard layout != lastLayout else { return }
             barLayoutingNavController.applyLayout(layout)
         } else {
-            barLayoutingNavController.applyLayout(barLayoutOwner.navigationBarLayout)
+            barLayoutingNavController.applyLayout(layout)
         }
     }
 }
+
+@MainActor
+protocol ControllerConfigReadable: AnyObject {
+    var controllerConfig: ControllerConfig { get }
+}
+
+extension NanoViewController: ControllerConfigReadable {}

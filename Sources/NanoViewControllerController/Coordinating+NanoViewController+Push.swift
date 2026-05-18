@@ -2,16 +2,17 @@
 
 import Combine
 import NanoViewControllerCombine
+import NanoViewControllerCore
 import NanoViewControllerNavigation
 import UIKit
 
 public extension Coordinating {
-    /// Convenience overload: builds the `Scene` from its type + view-model
+    /// Convenience overload: builds the `NanoViewController` from its type + view-model
     /// and forwards to ``pushSceneInstance(_:animated:navigationPresentationCompletion:navigationHandler:)``.
     ///
     /// This is the single line of code most coordinators use per screen.
     ///
-    /// ## Example — push a sign-up scene and route its steps
+    /// ## Example — push a sign-up controller and route its steps
     ///
     /// ```swift
     /// final class OnboardingCoordinator: BaseCoordinator<OnboardingStep> {
@@ -36,19 +37,19 @@ public extension Coordinating {
     /// ```
     ///
     /// - Parameters:
-    ///   - scene: The scene type. Constructed via `S(viewModel: viewModel)`.
+    ///   - scene: The controller type. Constructed via `S(viewModel: viewModel)`.
     ///   - viewModel: The ViewModel to inject.
     ///   - animated: Animate the push.
     ///   - navigationPresentationCompletion: Fires after the push transition.
     ///   - navigationHandler: Pattern-match on `V.ViewModel.NavigationStep`
     ///     and route each case.
-    func push<S: Scene<V>, V: ContentView>(
+    func push<S: NanoViewController<V>, V: ContentView>(
         scene _: S.Type,
         viewModel: V.ViewModel,
         animated: Bool = true,
         navigationPresentationCompletion: Completion? = nil,
         navigationHandler: @escaping (_ step: V.ViewModel.NavigationStep) -> Void
-    ) where V.ViewModel: Navigating {
+    ) {
         let scene = S(viewModel: viewModel)
         pushSceneInstance(
             scene,
@@ -59,37 +60,30 @@ public extension Coordinating {
     }
 
     /// Pushes `scene` onto the navigation stack (or sets it as the root if the
-    /// stack is empty) and subscribes to its view-model navigator so
+    /// stack is empty) and subscribes to its navigation publisher so
     /// coordinator logic can react to user actions and decide when to
     /// advance/pop.
     ///
-    /// Use the overload above unless you already have a scene instance.
+    /// Use the overload above unless you already have a controller instance.
     ///
     /// - Parameters:
-    ///   - scene: A pre-built scene instance.
+    ///   - scene: A pre-built controller instance.
     ///   - animated: Animate the push.
     ///   - navigationPresentationCompletion: Fires after the push transition.
     ///   - navigationHandler: Pattern-match on `V.ViewModel.NavigationStep`
     ///     and route each case.
-    func pushSceneInstance<V: ContentView>(
-        _ scene: some Scene<V>,
+    func pushSceneInstance<S: NanoViewController<V>, V: ContentView>(
+        _ scene: S,
         animated: Bool = true,
         navigationPresentationCompletion: Completion? = nil,
         navigationHandler: @escaping (_ step: V.ViewModel.NavigationStep) -> Void
-    ) where V.ViewModel: Navigating {
-        let viewModel = scene.viewModel
-
+    ) {
         navigationController.setRootViewControllerIfEmptyElsePush(
             viewController: scene,
             animated: animated,
             completion: navigationPresentationCompletion
         )
 
-        // Forward navigation steps from the view-model to the caller's handler.
-        // The handler closes over coordinator state and decides whether to push
-        // another scene, present a modal, or finish the flow.
-        viewModel.navigator.navigation
-            .sinkOnMain { navigationHandler($0) }
-            .store(in: &cancellables)
+        subscribeToNavigation(of: scene, handler: navigationHandler)
     }
 }

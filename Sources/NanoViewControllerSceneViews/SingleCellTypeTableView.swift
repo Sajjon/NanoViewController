@@ -58,20 +58,18 @@ public typealias ListCell = CellConfigurable & UITableViewCell
 ///         InputFromView(selected: tableView.didSelectItem)
 ///     }
 ///
-///     func populate(with output: WalletsViewModel.OutputVM) -> [AnyCancellable] {
-///         [output.sections --> tableView.sections]
+///     func populate(with publishers: WalletsViewModel.Publishers) -> [AnyCancellable] {
+///         publishers.sections --> tableView.sections
 ///     }
 /// }
 ///
 /// /// View-model — exposes `sections` and routes selections.
-/// final class WalletsViewModel: BaseViewModel<WalletsStep, WalletsView.InputFromView, WalletsViewModel.OutputVM> {
-///     struct OutputVM {
+/// final class WalletsViewModel: AbstractViewModel<WalletsView.InputFromView, WalletsViewModel.Publishers, WalletsStep> {
+///     struct Publishers {
 ///         let sections: AnyPublisher<[SectionModel<Void, WalletRow>], Never>
 ///     }
-///     override func transform(input: Input) -> OutputVM {
-///         input.fromView.selected
-///             .sink { [navigator] indexPath in navigator.next(.userTappedRow(at: indexPath)) }
-///             .store(in: &cancellables)
+///     override func transform(input: Input) -> Output<Publishers, WalletsStep> {
+///         let navigator = Navigator<WalletsStep>()
 ///         let sections = api.fetchWallets()
 ///             .replaceError(with: [])
 ///             .map { wallets in [SectionModel<Void, WalletRow>(
@@ -79,7 +77,13 @@ public typealias ListCell = CellConfigurable & UITableViewCell
 ///                 items: wallets.map { WalletRow(name: $0.name, balance: $0.balance) }
 ///             )] }
 ///             .eraseToAnyPublisher()
-///         return OutputVM(sections: sections)
+///         return Output(
+///             publishers: Publishers(sections: sections),
+///             navigation: navigator.navigation
+///         ) {
+///             input.fromView.selected
+///                 .sink { [navigator] indexPath in navigator.next(.userTappedRow(at: indexPath)) }
+///         }
 ///     }
 /// }
 /// ```

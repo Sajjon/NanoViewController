@@ -3,7 +3,7 @@
 import NanoViewControllerCore
 import UIKit
 
-public extension AbstractController {
+public extension NanoViewController {
     /// Installs `barButtonContent` as the navigation item's *right* bar
     /// button, wiring its tap to the controller's
     /// ``rightBarButtonAbstractTarget`` (which in turn pushes to
@@ -13,7 +13,7 @@ public extension AbstractController {
     /// Use directly when imperatively setting a bar button (rare). Most
     /// scenes either:
     ///
-    ///   * conform to ``RightBarButtonContentMaking`` — a static one-shot
+    ///   * provide ``ControllerConfig/rightBarButton`` for static one-shot
     ///     installation in `viewDidLoad`, or
     ///   * push to ``InputFromController/rightBarButtonContentSubject`` — for
     ///     dynamic content that changes over time (e.g. enable/disable based
@@ -22,8 +22,9 @@ public extension AbstractController {
     /// ## Example — imperative use from a custom subclass
     ///
     /// ```swift
-    /// final class CustomScene: SceneController<MyView>, TitledScene {
-    ///     static var title: String { "Custom" }
+    /// final class CustomScene: NanoViewController<MyView>, ControllerConfigProviding {
+    ///     static let config = ControllerConfig(title: "Custom")
+    ///
     ///     override func viewDidLoad() {
     ///         super.viewDidLoad()
     ///         setRightBarButtonUsing(content: BarButtonContent(system: .add))

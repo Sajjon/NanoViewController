@@ -3,49 +3,60 @@
 import Combine
 import Foundation
 
-/// The controller-lifecycle + write-back surface every ``BaseViewModel``
-/// receives.
+/// The controller-lifecycle + write-back surface every scene-bound ViewModel
+/// receives through `Input.fromController`.
 ///
 /// Publishers (``viewDidLoad``, bar-button triggers) flow **from** the
-/// ``SceneController`` **into** the ViewModel. Subjects (``titleSubject``,
+/// ``NanoViewController`` **into** the ViewModel. Subjects (``titleSubject``,
 /// ``toastSubject``, etc.) flow the other direction: the ViewModel `send`s
 /// values to drive UI the controller owns.
 ///
-/// ## Example — using all four directions in a single ViewModel
+/// ## Example — using all four directions in a single ViewModel transform
 ///
 /// ```swift
-/// final class HomeViewModel: BaseViewModel<HomeStep, HomeInputFromView, HomeOutput> {
-///     override func transform(input: Input) -> HomeOutput {
+/// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
+/// import NanoViewControllerCore
+/// import NanoViewControllerNavigation
+///
+/// final class HomeViewModel: AbstractViewModel<
+///     HomeInputFromView,
+///     HomeViewModel.Publishers,
+///     HomeStep
+/// > {
+///     override func transform(input: Input) -> Output<Publishers, HomeStep> {
+///         let navigator = Navigator<HomeStep>()
+///
 ///         // 1. Lifecycle in: kick off an initial fetch on first appear.
-///         input.fromController.viewWillAppear
+///         let home = input.fromController.viewWillAppear
 ///             .first()
 ///             .flatMapLatest { [api] _ in api.fetchHome().replaceErrorWithEmpty() }
-///             .sink { [weak self] home in self?.applyHome(home) }
-///             .store(in: &cancellables)
+///             .share()
 ///
-///         // 2. Title write-back: change the title each time the user picks a tab.
-///         input.fromView.tabSelected
-///             .map { tab in tab.localizedTitle }
-///             .sink { input.fromController.titleSubject.send($0) }
-///             .store(in: &cancellables)
+///         return Output(
+///             publishers: Publishers(home: home.eraseToAnyPublisher()),
+///             navigation: navigator.navigation
+///         ) {
+///             // 2. Title write-back: change the title each time the user picks a tab.
+///             input.fromView.tabSelected
+///                 .map { tab in tab.localizedTitle }
+///                 .sink { input.fromController.titleSubject.send($0) }
 ///
-///         // 3. Bar-button trigger in: the navigation-bar Edit button was tapped.
-///         input.fromController.rightBarButtonTrigger
-///             .sink { [navigator] in navigator.next(.userTappedEdit) }
-///             .store(in: &cancellables)
+///             // 3. Bar-button trigger in: the navigation-bar Edit button was tapped.
+///             input.fromController.rightBarButtonTrigger
+///                 .sink { [navigator] in navigator.next(.userTappedEdit) }
 ///
-///         // 4. Toast write-back: tell the user when a sync completes.
-///         input.fromView.userTappedSync
-///             .flatMapLatest { [api] _ in api.sync().replaceErrorWithEmpty() }
-///             .sink { input.fromController.toastSubject.send("Synced") }
-///             .store(in: &cancellables)
-///
-///         return HomeOutput(/* … */)
+///             // 4. Toast write-back: tell the user when a sync completes.
+///             input.fromView.userTappedSync
+///                 .flatMapLatest { [api] _ in api.sync().replaceErrorWithEmpty() }
+///                 .sink { input.fromController.toastSubject.send("Synced") }
+///         }
 ///     }
 /// }
 /// ```
 ///
-/// The ``SceneController`` handles all the UIKit side-effects: it sets the
+/// The ``NanoViewController`` handles all the UIKit side-effects: it sets the
 /// title on the navigation item when ``titleSubject`` fires, dispatches a
 /// `UIAlertController`-based toast when ``toastSubject`` fires, and so on.
 public struct InputFromController {
@@ -74,7 +85,7 @@ public struct InputFromController {
 
     /// The ViewModel pushes left-bar-button content (icon / title / enabled
     /// state) here. Each emission is wired up via
-    /// ``AbstractController/setLeftBarButtonUsing(content:)``.
+    /// ``NanoViewController/setLeftBarButtonUsing(content:)``.
     public let leftBarButtonContentSubject: PassthroughSubject<BarButtonContent, Never>
 
     /// The ViewModel pushes right-bar-button content here. Same wiring as
@@ -85,7 +96,7 @@ public struct InputFromController {
     /// to display.
     public let toastSubject: PassthroughSubject<Toast, Never>
 
-    /// Memberwise initialiser — public so ``SceneController`` (or test fakes)
+    /// Memberwise initialiser — public so ``NanoViewController`` (or test fakes)
     /// can build the struct from the right side of the package boundary.
     public init(
         viewDidLoad: AnyPublisher<Void, Never>,

@@ -26,8 +26,8 @@ import UIKit
 ///         SettingsViewModel.InputFromView(selected: tableView.didSelectItem)
 ///     }
 ///
-///     func populate(with output: SettingsViewModel.OutputVM) -> [AnyCancellable] {
-///         [output.sections --> tableView.sections]
+///     func populate(with publishers: SettingsViewModel.Publishers) -> [AnyCancellable] {
+///         publishers.sections --> tableView.sections
 ///     }
 /// }
 /// ```

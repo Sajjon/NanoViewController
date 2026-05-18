@@ -2,6 +2,7 @@
 
 import Combine
 import NanoViewControllerCombine
+import NanoViewControllerCore
 import NanoViewControllerNavigation
 import UIKit
 
@@ -9,7 +10,7 @@ public extension Coordinating {
     /// Closure shape used by ``modallyPresent(scene:viewModel:animated:presentationCompletion:navigationHandler:)``
     /// and ``replaceAllScenes(with:viewModel:animated:whenReplacingFinished:navigationHandler:)``:
     /// receives the next navigation step plus a ``DismissScene`` callback the
-    /// handler can invoke to dismiss the presenting scene with optional
+    /// handler can invoke to dismiss the presenting controller with optional
     /// animation.
     ///
     /// ## Example
@@ -22,9 +23,9 @@ public extension Coordinating {
     ///     }
     /// }
     /// ```
-    typealias NavigationHandlerModalScene<N: Navigating> = (N.NavigationStep, @escaping DismissScene) -> Void
+    typealias ModalNavigationHandler<VM: ViewModelType> = (VM.NavigationStep, @escaping DismissScene) -> Void
 
-    /// Replaces every scene in the current navigation stack with `scene`.
+    /// Replaces every controller in the current navigation stack with `scene`.
     ///
     /// Use when transitioning to a *fresh* root for the same nav controller
     /// (e.g. logout → login). The previous stack is dismissed in
@@ -47,14 +48,14 @@ public extension Coordinating {
     ///     }
     /// }
     /// ```
-    func replaceAllScenes<S: Scene<V>, V: ContentView>(
+    func replaceAllScenes<S: NanoViewController<V>, V: ContentView>(
         with _: S.Type,
         viewModel: V.ViewModel,
         animated: Bool = true,
         whenReplacingFinished: Completion? = nil,
-        navigationHandler: @escaping NavigationHandlerModalScene<V.ViewModel>
-    ) where V.ViewModel: Navigating {
-        // Create a new instance of the `Scene`, injecting its ViewModel
+        navigationHandler: @escaping ModalNavigationHandler<V.ViewModel>
+    ) {
+        // Create a new instance of the controller, injecting its ViewModel.
         let scene = S(viewModel: viewModel)
 
         replaceAllScenes(
@@ -68,15 +69,13 @@ public extension Coordinating {
     /// Instance-level variant of
     /// ``replaceAllScenes(with:viewModel:animated:whenReplacingFinished:navigationHandler:)``.
     ///
-    /// Use when you already have a scene instance.
-    func replaceAllScenes<V: ContentView>(
-        with scene: some Scene<V>,
+    /// Use when you already have a controller instance.
+    func replaceAllScenes<S: NanoViewController<V>, V: ContentView>(
+        with scene: S,
         animated: Bool = true,
         whenReplacingFinished: Completion? = nil,
-        navigationHandler: @escaping NavigationHandlerModalScene<V.ViewModel>
-    ) where V.ViewModel: Navigating {
-        let viewModel = scene.viewModel
-
+        navigationHandler: @escaping ModalNavigationHandler<V.ViewModel>
+    ) {
         let oldVCs = navigationController.viewControllers
 
         navigationController.setRootViewControllerIfEmptyElsePush(
@@ -88,13 +87,7 @@ public extension Coordinating {
             oldVCs.forEach { $0.dismiss(animated: false, completion: nil) }
         }
 
-        viewModel.navigator.navigation
-            .sinkOnMain { [weak scene] step in
-                navigationHandler(step) { animated, navigationCompletion in
-                    scene?.dismiss(animated: animated, completion: navigationCompletion)
-                }
-            }
-            .store(in: &cancellables)
+        subscribeToModalNavigation(of: scene, handler: navigationHandler)
     }
 }
 
@@ -108,7 +101,7 @@ public extension UINavigationController {
     /// ## Example
     ///
     /// ```swift
-    /// // First scene of a flow — sets root if empty, pushes otherwise.
+    /// // First controller of a flow — sets root if empty, pushes otherwise.
     /// navigationController.setRootViewControllerIfEmptyElsePush(
     ///     viewController: SignUpScene(viewModel: vm)
     /// )

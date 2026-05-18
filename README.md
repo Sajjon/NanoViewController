@@ -9,8 +9,8 @@ A quick inline taste of the architecture — for a runnable toy example and a re
 
 ```swift
 // MARK: NanoViewController
-public final class SignUpScene: Scene<SignUpView> { // 🤯 3 lines VC! 
-    public static let title = "Sign Up"
+public final class SignUpScene: NanoViewController<SignUpView>, ControllerConfigProviding { // tiny VC
+    public static let config = ControllerConfig(title: "Sign Up")
 }
 
 // MARK: View
@@ -31,10 +31,10 @@ extension SignUpView: ViewModelled {
         )
     }
 
-    public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        output.isSubmitEnabled 	--> submitButton.isEnabledBinder
-        output.loadingText 		--> submitButton.titleBinder(for: .normal)
-        output.isLoading 		--> spinner.isAnimatingBinder
+    public func populate(with publishers: ViewModel.Publishers) -> [AnyCancellable] {
+        publishers.isSubmitEnabled 	--> submitButton.isEnabledBinder
+        publishers.loadingText 		--> submitButton.titleBinder(for: .normal)
+        publishers.isLoading 		--> spinner.isAnimatingBinder
     }
 }
 
@@ -47,27 +47,26 @@ public extension SignUpViewModel {
 	}
 }
 
-// MARK: ViewModel.Output
+// MARK: ViewModel.Publishers
 public extension SignUpViewModel {
-	struct Output {
+	struct Publishers {
 		public let isSubmitEnabled: AnyPublisher<Bool, Never>
 		public let isLoading: AnyPublisher<Bool, Never>
 	}
 }
 
-// MARK: ViewModel.InputFromView
-public final class SignUpViewModel: BaseViewModel<
-    SignUpUserAction, // NavigationStep
+// MARK: SignUpViewModel
+public final class SignUpViewModel: AbstractViewModel<
     SignUpViewModel.InputFromView,
-    SignUpViewModel.Output
+    SignUpViewModel.Publishers,
+    SignUpUserAction // NavigationStep
 > {
 	private let service: SignUpServicing
-	/* BaseViewModel declared `public let navigator = Navigator<NavigationStep>()` */
-	/* BaseViewModel declared `public var cancellables = Set<AnyCancellable>()` */
 
-	// MARK: BaseViewModel Overrides
-    override public func transform(input: Input) -> Output {
-        let activity = ActivityIndicator()
+	// MARK: AbstractViewModel Overrides
+    override public func transform(input: Input) -> Output<Publishers, SignUpUserAction> {
+        let navigator = Navigator<SignUpUserAction>()
+        let activity  = ActivityIndicator()
 
         // Name + email both non-empty → form is valid.
         let isFormValid: AnyPublisher<Bool, Never> = input.fromView.name
@@ -87,24 +86,26 @@ public final class SignUpViewModel: BaseViewModel<
             .map { valid, loading in valid && !loading }
             .eraseToAnyPublisher()
 
-        // On submit-tap: snapshot the latest (name, email), call the service
-        // (tracking activity), forward the resulting user as `.signedUp`.
-        input.fromView.submitTrigger
-            .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
-            .map { [service] name, email in
-                service.signUp(name: name, email: email)
-                    .trackActivity(activity)
-            }
-            .switchToLatest()
-            .sink { [weak navigator] user in
-                navigator?.next(.signedUp(user))
-            }
-            .store(in: &cancellables)
-
         return Output(
-            isSubmitEnabled: isSubmitEnabled,
-            isLoading: isLoading
-        )
+            publishers: Publishers(
+                isSubmitEnabled: isSubmitEnabled,
+                isLoading: isLoading
+            ),
+            navigation: navigator.navigation
+        ) {
+            // On submit-tap: snapshot the latest (name, email), call the service
+            // (tracking activity), forward the resulting user as `.signedUp`.
+            input.fromView.submitTrigger
+                .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
+                .map { [service] name, email in
+                    service.signUp(name: name, email: email)
+                        .trackActivity(activity)
+                }
+                .switchToLatest()
+                .sink { [navigator] user in
+                    navigator.next(.signedUp(user))
+                }
+        }
     }
 }
 
@@ -119,10 +120,10 @@ The package ships six independent SPM library targets so consumers can pick exac
 
 | Product | Layer | Notes |
 |---|---|---|
-| `NanoViewControllerCore` | value types | `ViewModelType`, `InputType`, `EmptyInitializable`, `AbstractViewModel`, `AbstractTarget`, `ActivityIndicator`, `ErrorTracker` |
+| `NanoViewControllerCore` | value types | `Output`, `EmptyInitializable`, `AbstractTarget`, `ActivityIndicator`, `ErrorTracker`, `BindingsBuilder` |
 | `NanoViewControllerCombine` | reactive | `Binder`, the `-->` operator, `Publisher+Extras`, `UIControl`/`UITextField`/`UIView` publisher extensions |
 | `NanoViewControllerNavigation` | coordinators | `Coordinating`, `BaseCoordinator`, `Navigator`, `Stepper` |
-| `NanoViewControllerController` | UIKit glue | `SceneController<View>`, `BarButtonContent`, `InputFromController`, `ViewModelled`, `NavigationBarLayoutingNavigationController`, `Toast` |
+| `NanoViewControllerController` | UIKit glue | `NanoViewController<View>`, `AbstractViewModel`, `ViewModelType`, `InputType`, `ControllerConfig`, `BarButtonContent`, `InputFromController`, `ViewModelled`, `NavigationBarLayoutingNavigationController`, `Toast` |
 | `NanoViewControllerSceneViews` | UIKit views | `AbstractSceneView`, `BaseScrollableStackViewOwner`, `BaseTableViewOwner`, `SingleCellTypeTableView`, `CellConfigurable`, pull-to-refresh / class-identifiable / footer plumbing |
 | `NanoViewControllerDIPrimitives` | DI protocols | `Clock`, `MainScheduler`, `DateProvider`, `HapticFeedback`, `Pasteboard`, `UrlOpener` |
 
@@ -154,7 +155,7 @@ The `pre-commit` hook installed by `just bootstrap` enforces: typos, shellcheck,
 
 ## SignUpDemo (toy, in this repo)
 
-[`Examples/SignUpDemo/`](./Examples/SignUpDemo/) is a small UIKit iOS app that walks through every load-bearing piece of the package: a `SceneController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
+[`Examples/SignUpDemo/`](./Examples/SignUpDemo/) is a small UIKit iOS app that walks through every load-bearing piece of the package: a `NanoViewController`-backed sign-up screen, a `Coordinator` swap on success, and a logout button on the home screen that re-runs the onboarding flow. It uses a stub `SignUpServicing` (instant-success) so it runs out of the box on the simulator.
 
 ```sh
 just example-gen     # generate Examples/SignUpDemo/SignUpDemo.xcodeproj from project.yml
@@ -162,7 +163,7 @@ just example-build   # xcodebuild for iPhone 17 simulator
 open Examples/SignUpDemo/SignUpDemo.xcodeproj   # then ⌘R in Xcode
 ```
 
-The example shows the canonical wiring: scene = `SceneController<View>`, view-model subclasses the package's `BaseViewModel<NavigationStep, InputFromView, Output>` (which fixes `FromController` to `InputFromController` and provides a `Navigator<Step>`), coordinator subscribes to that navigator and routes the user-actions to push / pop / present transitions. 
+The example shows the canonical wiring: controller = `NanoViewController<View>`, view-model subclasses the package's `AbstractViewModel<InputFromView, Publishers, NavigationStep>`, declares a local `Navigator<Step>` inside `transform` and surfaces it on the returned `Output<Publishers, Step>`. The coordinator subscribes to that publisher (via the hosting controller's `.navigation`) and routes the user-actions to push / pop / present transitions.
 
 ## Zhip (real-world iOS wallet)
 

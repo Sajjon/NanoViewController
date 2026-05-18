@@ -5,6 +5,7 @@ import Foundation
 import NanoViewControllerCombine
 import NanoViewControllerController
 import NanoViewControllerCore
+import NanoViewControllerNavigation
 
 /// User outcomes the SignUp scene can emit. The coordinator subscribes and
 /// decides what happens next (here: `signedUp(_:)` advances to Home).
@@ -32,10 +33,10 @@ public extension SignUpViewModel {
 	}
 }
 
-// MARK: Output
+// MARK: Publishers
 public extension SignUpViewModel {
 	/// Reactive bindings the view installs.
-	struct Output {
+	struct Publishers {
 		/// Drives the Sign Up button's `isEnabled` (`isFormValid && !isLoading`).
 		public let isSubmitEnabled: AnyPublisher<Bool, Never>
 
@@ -45,7 +46,7 @@ public extension SignUpViewModel {
 		public let isLoading: AnyPublisher<Bool, Never>
 	}
 }
-public extension SignUpViewModel.Output {
+public extension SignUpViewModel.Publishers {
 	var loadingText: AnyPublisher<String, Never> {
 		isLoading.map { $0 ? "" : "Sign Up" }.eraseToAnyPublisher()
 	}
@@ -53,11 +54,12 @@ public extension SignUpViewModel.Output {
 
 /// Drives `SignUpView`: validates the (very loose) name + email rules,
 /// gates the submit button, and on tap calls the injected service. The
-/// returned user is forwarded as `.signedUp` to the parent coordinator.
-public final class SignUpViewModel: BaseViewModel<
-    SignUpUserAction,
+/// returned user is forwarded as `.signedUp` via the navigation publisher
+/// exposed in `Output`, which the coordinator subscribes to.
+public final class SignUpViewModel: AbstractViewModel<
     SignUpViewModel.InputFromView,
-    SignUpViewModel.Output
+    SignUpViewModel.Publishers,
+    SignUpUserAction
 > {
 	private let service: SignUpServicing
 
@@ -66,8 +68,10 @@ public final class SignUpViewModel: BaseViewModel<
 		super.init()
 	}
 
-	// MARK: BaseViewModel Overrides
-    override public func transform(input: Input) -> Output {
+	// MARK: AbstractViewModel Overrides
+    override public func transform(input: Input) -> Output<Publishers, SignUpUserAction> {
+        let navigator = Navigator<SignUpUserAction>()
+
         // Track the in-flight state of the sign-up call so the view can show
         // a spinner and disable the submit button while waiting.
         let activity = ActivityIndicator()
@@ -90,23 +94,25 @@ public final class SignUpViewModel: BaseViewModel<
             .map { valid, loading in valid && !loading }
             .eraseToAnyPublisher()
 
-        // On submit-tap: snapshot the latest (name, email), call the service
-        // (tracking activity), forward the resulting user as `.signedUp`.
-        input.fromView.submitTrigger
-            .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
-            .map { [service] name, email in
-                service.signUp(name: name, email: email)
-                    .trackActivity(activity)
-            }
-            .switchToLatest()
-            .sink { [weak navigator] user in
-                navigator?.next(.signedUp(user))
-            }
-            .store(in: &cancellables)
-
         return Output(
-            isSubmitEnabled: isSubmitEnabled,
-            isLoading: isLoading
-        )
+            publishers: Publishers(
+                isSubmitEnabled: isSubmitEnabled,
+                isLoading: isLoading
+            ),
+            navigation: navigator.navigation
+        ) {
+            // On submit-tap: snapshot the latest (name, email), call the service
+            // (tracking activity), forward the resulting user as `.signedUp`.
+            input.fromView.submitTrigger
+                .withLatestFrom(input.fromView.name.combineLatest(input.fromView.email))
+                .map { [service] name, email in
+                    service.signUp(name: name, email: email)
+                        .trackActivity(activity)
+                }
+                .switchToLatest()
+                .sink { [navigator] user in
+                    navigator.next(.signedUp(user))
+                }
+        }
     }
 }

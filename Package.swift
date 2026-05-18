@@ -8,7 +8,7 @@
 //   NanoViewControllerCore           value types only; no UIKit
 //   NanoViewControllerCombine        Combine helpers + Binder + --> operator
 //   NanoViewControllerNavigation     Coordinator pattern + Navigator
-//   NanoViewControllerController     SceneController, BarButton plumbing, nav-bar layout
+//   NanoViewControllerController     NanoViewController, BarButton plumbing, nav-bar layout
 //   NanoViewControllerSceneViews     AbstractSceneView + SingleCellTypeTableView
 //   NanoViewControllerDIPrimitives   protocol-only DI (Clock, MainScheduler, …)
 //
@@ -88,6 +88,11 @@ let package = Package(
         .testTarget(
             name: "NanoViewControllerCoreTests",
             dependencies: ["NanoViewControllerCore"],
+            swiftSettings: swift6Mode
+        ),
+        .testTarget(
+            name: "NanoViewControllerControllerTests",
+            dependencies: ["NanoViewControllerController"],
             swiftSettings: swift6Mode
         ),
         .testTarget(

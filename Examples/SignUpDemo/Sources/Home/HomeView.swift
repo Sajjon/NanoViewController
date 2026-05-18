@@ -81,8 +81,8 @@ extension HomeView: ViewModelled {
         InputFromView(logoutTrigger: logoutButton.tapPublisher)
     }
 
-    public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        output.greeting --> greetingLabel
-        output.email --> emailLabel
+    public func populate(with publishers: ViewModel.Publishers) -> [AnyCancellable] {
+        publishers.greeting --> greetingLabel
+        publishers.email --> emailLabel
     }
 }

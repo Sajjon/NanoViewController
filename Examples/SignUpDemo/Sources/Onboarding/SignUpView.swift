@@ -114,9 +114,9 @@ extension SignUpView: ViewModelled {
         )
     }
 
-    public func populate(with output: ViewModel.Output) -> [AnyCancellable] {
-        output.isSubmitEnabled --> submitButton.isEnabledBinder
-        output.loadingText --> submitButton.titleBinder(for: .normal)
-        output.isLoading --> spinner.isAnimatingBinder
+    public func populate(with publishers: ViewModel.Publishers) -> [AnyCancellable] {
+        publishers.isSubmitEnabled --> submitButton.isEnabledBinder
+        publishers.loadingText --> submitButton.titleBinder(for: .normal)
+        publishers.isLoading --> spinner.isAnimatingBinder
     }
 }
