@@ -3,7 +3,8 @@
 import Combine
 
 /// `@resultBuilder` that turns a block of binding statements into the
-/// `[AnyCancellable]` shape ``ViewModelled/populate(with:)`` returns.
+/// `[AnyCancellable]` shape
+/// ``NanoViewControllerController/ViewModelled/populate(with:)`` returns.
 ///
 /// Lets you write:
 ///
@@ -60,10 +61,10 @@ import Combine
 /// }
 /// ```
 ///
-/// ``ViewModelled/populate(with:)`` is annotated with this builder, so any
-/// conformer's implementation gets the transformation automatically — no need
-/// to repeat the attribute, and the array-literal form keeps working
-/// (`buildExpression(_:)` accepts `[AnyCancellable]` directly).
+/// ``NanoViewControllerController/ViewModelled/populate(with:)`` is annotated
+/// with this builder, so any conformer's implementation gets the transformation
+/// automatically — no need to repeat the attribute, and the array-literal form
+/// keeps working (`buildExpression(_:)` accepts `[AnyCancellable]` directly).
 @resultBuilder
 public enum BindingsBuilder {
     /// The partial-result type carried through every builder phase.

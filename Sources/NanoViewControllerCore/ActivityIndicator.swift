@@ -20,7 +20,10 @@ import Foundation
 ///
 /// ```swift
 /// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
 /// import NanoViewControllerCore
+/// import NanoViewControllerNavigation
 ///
 /// final class SignUpViewModel: AbstractViewModel<
 ///     SignUpInputFromView,

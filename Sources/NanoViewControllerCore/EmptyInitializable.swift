@@ -4,10 +4,10 @@ import Foundation
 
 /// Marker protocol asserting "this type can be constructed with no arguments".
 ///
-/// ``NanoViewController`` instantiates the root content view via
-/// `(View.self as EmptyInitializable.Type).init()`. Declaring conformance is
-/// effectively free for any type whose `init()` is non-failable — usually a
-/// one-line:
+/// ``NanoViewControllerController/NanoViewController`` instantiates the root
+/// content view via `(View.self as EmptyInitializable.Type).init()`. Declaring
+/// conformance is effectively free for any type whose `init()` is non-failable
+/// — usually a one-line:
 ///
 /// ```swift
 /// extension MyContentView: EmptyInitializable {}
@@ -29,12 +29,14 @@ import Foundation
 /// `init(frame:)`, *not* `init()`, so generic code can't simply write
 /// `View()`. Declaring `EmptyInitializable` lets the type system carry the
 /// "yes, this view promises a no-arg initialiser" guarantee through generic
-/// constraints like `View: ContentView` (see ``ContentView``).
+/// constraints like `View: ContentView` (see
+/// ``NanoViewControllerController/ContentView``).
 ///
 /// ## Example — a minimal `ContentView` conformer
 ///
 /// ```swift
 /// import NanoViewControllerCore
+/// import NanoViewControllerController
 /// import NanoViewControllerSceneViews
 /// import UIKit
 ///

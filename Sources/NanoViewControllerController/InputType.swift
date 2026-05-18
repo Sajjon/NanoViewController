@@ -23,6 +23,11 @@ import Foundation
 /// ## Example — synthesised Input on an `AbstractViewModel` subclass
 ///
 /// ```swift
+/// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
+/// import NanoViewControllerCore
+///
 /// final class HomeViewModel: AbstractViewModel<
 ///     HomeInputFromView,
 ///     HomeViewModel.Publishers,
@@ -59,6 +64,9 @@ import Foundation
 /// ## Example — building an `Input` in a unit test
 ///
 /// ```swift
+/// import Combine
+/// import NanoViewControllerController
+///
 /// // Stand up a synthetic Input so we can drive the ViewModel from a test.
 /// let usernameSubject = CurrentValueSubject<String, Never>("")
 /// let passwordSubject = CurrentValueSubject<String, Never>("")

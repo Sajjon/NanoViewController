@@ -14,6 +14,12 @@ import Foundation
 /// ## Example — using all four directions in a single ViewModel transform
 ///
 /// ```swift
+/// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
+/// import NanoViewControllerCore
+/// import NanoViewControllerNavigation
+///
 /// final class HomeViewModel: AbstractViewModel<
 ///     HomeInputFromView,
 ///     HomeViewModel.Publishers,

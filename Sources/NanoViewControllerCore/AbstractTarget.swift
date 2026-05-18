@@ -12,9 +12,10 @@ import Foundation
 /// call, and it forwards each invocation through a ``Combine/PassthroughSubject``
 /// the rest of the app subscribes to.
 ///
-/// ``NanoViewController`` keeps two long-lived `AbstractTarget` instances —
-/// one each for the left and right navigation bar buttons — and exposes the
-/// matching publishers to ViewModels via ``InputFromController``.
+/// ``NanoViewControllerController/NanoViewController`` keeps two long-lived
+/// `AbstractTarget` instances — one each for the left and right navigation bar
+/// buttons — and exposes the matching publishers to ViewModels via
+/// ``NanoViewControllerController/InputFromController``.
 ///
 /// ## Why is this its own class instead of a closure?
 ///
@@ -58,10 +59,9 @@ import Foundation
 /// ```
 ///
 /// In normal app code you'll never need to build one of these directly —
-/// ``NanoViewController`` already exposes
-/// ``NanoViewController/leftBarButtonAbstractTarget`` and
-/// ``NanoViewController/rightBarButtonAbstractTarget`` for navigation bar
-/// buttons, and pure Combine extensions on `UIControl` (see
+/// ``NanoViewControllerController/NanoViewController`` already exposes
+/// `leftBarButtonAbstractTarget` and `rightBarButtonAbstractTarget` for
+/// navigation bar buttons, and pure Combine extensions on `UIControl` (see
 /// `UIControl+Publisher.swift`) cover regular controls.
 ///
 /// `@MainActor` because UIKit dispatches target/action selectors on the main

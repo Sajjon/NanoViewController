@@ -22,6 +22,11 @@ import Foundation
 /// ## Example — global error toast plus per-chain typed handling
 ///
 /// ```swift
+/// import Combine
+/// import NanoViewControllerCombine
+/// import NanoViewControllerController
+/// import NanoViewControllerCore
+///
 /// final class HomeViewModel: AbstractViewModel<
 ///     HomeInputFromView,
 ///     HomeViewModel.Publishers,

@@ -2,14 +2,16 @@
 
 import Combine
 
-/// What every ViewModel's ``ViewModelType/transform(input:)`` returns: the
-/// `Publishers` bag the view binds to UI controls, the navigation publisher
+/// What every ViewModel's
+/// ``NanoViewControllerController/ViewModelType/transform(input:)`` returns:
+/// the `Publishers` bag the view binds to UI controls, the navigation publisher
 /// the coordinator subscribes to, and the `[AnyCancellable]` the controller
 /// retains for the lifetime of the scene.
 ///
 /// `Output` is the *wrapper*; the generic `Publishers` parameter is the
-/// ViewModel-specific publisher-bundle the view consumes in `populate(with:)`,
-/// and `NavigationStep` is the enum the coordinator pattern-matches on.
+/// ViewModel-specific publisher-bundle the view consumes in
+/// ``NanoViewControllerController/ViewModelled/populate(with:)``, and
+/// `NavigationStep` is the enum the coordinator pattern-matches on.
 /// Folding all three into one value moves both subscription ownership and
 /// navigation out of the ViewModel — the ViewModel itself carries no stored
 /// state.
@@ -17,6 +19,10 @@ import Combine
 /// ## Example — at the call site
 ///
 /// ```swift
+/// import Combine
+/// import NanoViewControllerCore
+/// import NanoViewControllerNavigation
+///
 /// public extension SignUpViewModel {
 ///     struct Publishers {
 ///         let isSubmitEnabled: AnyPublisher<Bool, Never>
@@ -70,17 +76,19 @@ import Combine
 /// `Combine.Publishers.X`.
 @MainActor
 public struct Output<Publishers, NavigationStep: Sendable> {
-    /// The publisher bag the view binds to UI controls via ``ViewModelled/populate(with:)``.
+    /// The publisher bag the view binds to UI controls via
+    /// ``NanoViewControllerController/ViewModelled/populate(with:)``.
     public let publishers: Publishers
 
     /// The navigation step stream the coordinator subscribes to. The
     /// ViewModel emits via a locally-owned `PassthroughSubject` (or a
-    /// ``Navigator``) — the coordinator pattern-matches on the cases.
+    /// ``NanoViewControllerNavigation/Navigator``) — the coordinator
+    /// pattern-matches on the cases.
     public let navigation: AnyPublisher<NavigationStep, Never>
 
     /// Subscriptions started inside `transform` that must outlive the call.
-    /// ``NanoViewController`` stores these in its own bag so they live as long
-    /// as the scene.
+    /// ``NanoViewControllerController/NanoViewController`` stores these in its
+    /// own bag so they live as long as the scene.
     public let cancellables: [AnyCancellable]
 
     /// Designated initializer.
