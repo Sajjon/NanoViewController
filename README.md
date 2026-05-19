@@ -129,6 +129,64 @@ The package ships six independent SPM library targets so consumers can pick exac
 
 `Combine`, `Navigation`, `Controller`, `SceneViews`, `DIPrimitives` all depend on `Core`. UIKit modules (`Controller`, `SceneViews`, `DIPrimitives`) need iOS 26+; pure value-type modules build on macOS 14+ too. Every target compiles in Swift 6.2 language mode (`swift-tools-version: 6.2`) so the package's `@MainActor`-on-UIKit annotations are enforced as hard errors at the consumer's call site.
 
+# Testing your coordinators
+
+Coordinators in NVC register routing logic as a trailing closure to `push(...)` / `modallyPresent(...)`:
+
+```swift
+push(scene: PrepareScene.self, viewModel: vm) { [weak self] step in
+    guard let self else { return }
+    switch step {
+    case .cancel:                finish()
+    case let .submit(payment):   toReviewPayment(payment)
+    }
+}
+```
+
+That closure is invoked through a Combine subscription on the scene's `navigation` publisher — driving it from a unit test would normally mean taking the long way around: a ViewModel-level test that drives the view's input subjects through real UIKit (`tap`, `setText`, `drainRunLoop`) so the ViewModel's `transform` finally emits the step, the subscription fires, and the closure runs.
+
+NVC exposes the closure directly on each `NanoViewController` instance under an `@_spi(Testing)` seam so unit tests can short-circuit the pipeline:
+
+```swift
+@_spi(Testing) import NanoViewControllerController
+
+func test_submitPayment_pushesReviewTransaction() throws {
+    // Arrange
+    let coordinator = SendCoordinator(navigationController: nav, deeplinks: Empty().eraseToAnyPublisher())
+    coordinator.start()
+    let prepare = try XCTUnwrap(nav.viewControllers.first as? PrepareScene)
+
+    // Act
+    prepare.navigationHandler?(.submit(payment))
+
+    // Assert
+    XCTAssertTrue(nav.viewControllers.last is ReviewScene)
+}
+```
+
+Two hooks ship on every `NanoViewController<View>`:
+
+| Hook | Set by | Closure shape |
+|---|---|---|
+| `scene.navigationHandler`      | `push(...)` / `pushSceneInstance(...)`              | `(NavigationStep) -> Void`                  |
+| `scene.modalNavigationHandler` | `modallyPresent(...)` / `replaceAllScenes(...)`     | `(NavigationStep, DismissScene) -> Void`    |
+
+The modal variant accepts a spy `DismissScene` so tests can observe both the routing and the dismissal:
+
+```swift
+var dismissCalled = false
+let spy: DismissScene = { _, completion in
+    dismissCalled = true
+    completion?()
+}
+scan.modalNavigationHandler?(.scanned(intent), spy)
+XCTAssertTrue(dismissCalled)
+```
+
+**Trade-off.** Driving the SPI handler directly does not assert that the ViewModel's emitted step actually reaches the coordinator's subscription — only that the handler routes correctly once invoked. The Combine wiring is identical across every `push(...)` / `modallyPresent(...)` call, so a single happy-path UI-driven test (or simply observing that the scene appears on the stack after `start()`) is enough to cover it. Use the SPI for the per-step routing assertions; rely on ViewModel-level tests for the emission contracts.
+
+**Visibility.** The two hooks are `@_spi(Testing) public internal(set)` — production callers don't see them unless they opt in with `@_spi(Testing) import NanoViewControllerController`. Only NVC writes through them; consumers can only read.
+
 # Local development
 
 First-time setup on a fresh clone:

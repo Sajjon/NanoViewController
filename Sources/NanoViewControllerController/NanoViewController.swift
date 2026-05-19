@@ -3,6 +3,7 @@
 import Combine
 import NanoViewControllerCore
 import NanoViewControllerDIPrimitives
+import NanoViewControllerNavigation
 import UIKit
 
 /// The "Single-Line Controller" base class — generic scene glue that hosts
@@ -98,6 +99,111 @@ open class NanoViewController<View: ContentView>: UIViewController {
     /// coordinator hookup code instead of reaching into the ViewModel.
     public lazy var navigation: AnyPublisher<ViewModel.NavigationStep, Never> =
         navigationSubject.eraseToAnyPublisher()
+
+    /// Test-only handle to the navigation handler the coordinator registered
+    /// for this scene when it was pushed onto the navigation stack via
+    /// ``Coordinating/push(scene:viewModel:animated:navigationPresentationCompletion:navigationHandler:)``
+    /// or
+    /// ``Coordinating/pushSceneInstance(_:animated:navigationPresentationCompletion:navigationHandler:)``.
+    ///
+    /// ## Why this exists
+    ///
+    /// Coordinators register routing logic inline at the call site:
+    ///
+    /// ```swift
+    /// push(scene: PrepareScene.self, viewModel: vm) { [weak self] step in
+    ///     guard let self else { return }
+    ///     switch step {
+    ///     case .cancel: finish()
+    ///     case let .submit(payment): toReviewPayment(payment)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// That handler is normally only invoked through the Combine pipeline:
+    /// the ViewModel emits a `NavigationStep` from `transform`, NVC forwards
+    /// it through ``navigation``, and the coordinator's `sinkOnMain`
+    /// subscription dispatches it. Unit tests that just want to assert
+    /// **"when `.submit(payment)` happens, `ReviewPayment` gets pushed"**
+    /// would otherwise have to drive the full view → view-model → Combine
+    /// chain via UIKit (taps, text entry, runloop drains) to reach that
+    /// switch statement.
+    ///
+    /// `navigationHandler` exposes the same closure that the Combine sink is
+    /// holding, so tests can synthesize the step directly:
+    ///
+    /// ```swift
+    /// @_spi(Testing) import NanoViewControllerController
+    ///
+    /// func test_submitPayment_pushesReview() {
+    ///     coordinator.start()
+    ///     let prepare = navigationController.viewControllers.first as! PrepareScene
+    ///
+    ///     prepare.navigationHandler?(.submit(payment))
+    ///
+    ///     XCTAssertTrue(navigationController.viewControllers.last is ReviewScene)
+    /// }
+    /// ```
+    ///
+    /// ## Trade-off
+    ///
+    /// The test no longer verifies that the ViewModel's emitted step actually
+    /// reaches the coordinator's subscription — only that the handler routes
+    /// correctly once invoked. The wiring is identical across every `push`
+    /// call site, so one happy-path test that drives a real Combine emission
+    /// is usually enough to cover the subscription itself. Use this seam for
+    /// the routing-logic tests; rely on VM-level tests for the emission
+    /// contracts and a UI smoke test for the pipeline.
+    ///
+    /// ## Visibility
+    ///
+    /// Hidden behind `@_spi(Testing)` — production callers see this property
+    /// as `internal` unless they opt in via `@_spi(Testing) import`. NVC and
+    /// its tests can write through `internal(set)`; consumers can only read.
+    ///
+    /// Nil when the scene was presented modally (see ``modalNavigationHandler``)
+    /// or hasn't been pushed yet.
+    @_spi(Testing)
+    public internal(set) var navigationHandler: ((ViewModel.NavigationStep) -> Void)?
+
+    /// Test-only handle to the navigation handler the coordinator registered
+    /// for this scene when it was presented modally via
+    /// ``Coordinating/modallyPresent(scene:animated:presentationCompletion:navigationHandler:)``
+    /// (or one of the modal-style overloads such as
+    /// ``Coordinating/replaceAllScenes(with:animated:whenReplacingFinished:navigationHandler:)``).
+    ///
+    /// Same rationale as ``navigationHandler``, but the modal variant's
+    /// handler signature carries an extra ``DismissScene`` parameter so the
+    /// coordinator can dismiss the modal from inside the routing closure:
+    ///
+    /// ```swift
+    /// modallyPresent(scene: ScanQRCode.self, viewModel: vm) { [weak self] step, dismiss in
+    ///     switch step {
+    ///     case let .scanned(intent):
+    ///         dismiss(true) { self?.parent.forward(intent) }
+    ///     case .cancel:
+    ///         dismiss(true, nil)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// In tests, pass a spy ``DismissScene`` to observe both the routing
+    /// and the dismissal:
+    ///
+    /// ```swift
+    /// var dismissCalled = false
+    /// let dismiss: DismissScene = { _, completion in
+    ///     dismissCalled = true
+    ///     completion?()
+    /// }
+    /// scan.modalNavigationHandler?(.scanned(intent), dismiss)
+    /// XCTAssertTrue(dismissCalled)
+    /// ```
+    ///
+    /// Nil when the scene was pushed (see ``navigationHandler``) or hasn't
+    /// been presented yet.
+    @_spi(Testing)
+    public internal(set) var modalNavigationHandler: ((ViewModel.NavigationStep, @escaping DismissScene) -> Void)?
 
     /// Clock used to auto-dismiss toasts emitted via
     /// ``InputFromController/toastSubject``.
