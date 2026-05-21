@@ -17,11 +17,16 @@ extension Coordinating {
     /// tests can invoke coordinator routing directly without driving the
     /// view-model's Combine pipeline. Production callers don't see this
     /// property unless they opt in via `@_spi(Testing) import`.
+    ///
+    /// Clears ``NanoViewController/modalNavigationHandler`` to keep the two
+    /// SPI hooks mutually exclusive — the live handler is whichever helper
+    /// last subscribed.
     func subscribeToNavigation<S: NanoViewController<V>, V: ContentView>(
         of scene: S,
         handler: @escaping (V.ViewModel.NavigationStep) -> Void
     ) {
         scene.navigationHandler = handler
+        scene.modalNavigationHandler = nil
         scene.navigation
             .sinkOnMain { handler($0) }
             .store(in: &cancellables)
@@ -37,11 +42,16 @@ extension Coordinating {
     /// ``NanoViewController/modalNavigationHandler`` (an `@_spi(Testing)` hook).
     /// Tests pass a spy ``DismissScene`` when invoking the handler so the
     /// dismissal side-effect is observable without a real modal presentation.
+    ///
+    /// Clears ``NanoViewController/navigationHandler`` to keep the two SPI
+    /// hooks mutually exclusive — the live handler is whichever helper last
+    /// subscribed.
     func subscribeToModalNavigation<S: NanoViewController<V>, V: ContentView>(
         of scene: S,
         handler: @escaping ModalNavigationHandler<V.ViewModel>
     ) {
         scene.modalNavigationHandler = handler
+        scene.navigationHandler = nil
         scene.navigation
             .sinkOnMain { [weak scene] step in
                 handler(step) { animated, completion in

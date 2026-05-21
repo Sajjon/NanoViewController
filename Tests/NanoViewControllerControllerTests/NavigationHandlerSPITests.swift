@@ -101,6 +101,46 @@ final class NavigationHandlerSPITests: XCTestCase {
         )
     }
 
+    // MARK: - Mutual exclusivity of the two SPI hooks
+
+    func test_resubscribingModalAfterPush_clearsThePushHandler() throws {
+        // Arrange — wire up a scene through the push helper first.
+        let coordinator = TestCoordinator(navigationController: UINavigationController())
+        let viewModel = SPITestViewModel()
+        coordinator.push(scene: SPITestScene.self, viewModel: viewModel, animated: false) { _ in }
+        let scene = try XCTUnwrap(coordinator.navigationController.viewControllers.last as? SPITestScene)
+        XCTAssertNotNil(scene.navigationHandler)
+        XCTAssertNil(scene.modalNavigationHandler)
+
+        // Act — re-subscribe the same instance through the modal helper.
+        coordinator.subscribeToModalNavigation(of: scene) { _, _ in }
+
+        // Assert — the docs claim mutual exclusivity; the implementation now
+        // honours it instead of leaving a stale push handler alongside the
+        // freshly-installed modal one.
+        XCTAssertNotNil(scene.modalNavigationHandler)
+        XCTAssertNil(scene.navigationHandler)
+    }
+
+    func test_resubscribingPushAfterModal_clearsTheModalHandler() throws {
+        // Arrange — wire up via modal first.
+        let nav = ModalPresentCapturingNavigationController()
+        let coordinator = TestCoordinator(navigationController: nav)
+        let viewModel = SPITestViewModel()
+        coordinator.modallyPresent(scene: SPITestScene.self, viewModel: viewModel, animated: false) { _, _ in }
+        let presented = try XCTUnwrap(nav.presentedViewControllerCapture as? UINavigationController)
+        let scene = try XCTUnwrap(presented.viewControllers.first as? SPITestScene)
+        XCTAssertNotNil(scene.modalNavigationHandler)
+        XCTAssertNil(scene.navigationHandler)
+
+        // Act — re-subscribe the same instance through the push helper.
+        coordinator.subscribeToNavigation(of: scene) { _ in }
+
+        // Assert
+        XCTAssertNotNil(scene.navigationHandler)
+        XCTAssertNil(scene.modalNavigationHandler)
+    }
+
     func test_modalNavigationHandler_dismissForwardsAnimatedFlagAndCompletion() {
         // Arrange
         let nav = ModalPresentCapturingNavigationController()
