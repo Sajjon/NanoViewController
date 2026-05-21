@@ -205,6 +205,18 @@ open class NanoViewController<View: ContentView>: UIViewController {
     @_spi(Testing)
     public internal(set) var modalNavigationHandler: ((ViewModel.NavigationStep, @escaping DismissScene) -> Void)?
 
+    /// The Combine subscription forwarding ``navigation`` into the
+    /// coordinator's routing closure (either ``navigationHandler`` or
+    /// ``modalNavigationHandler``).
+    ///
+    /// Lives on the scene rather than the coordinator's bag so that
+    /// re-subscribing through the inverse helper (push ↔ modal) cancels the
+    /// previous subscription — assigning a fresh `AnyCancellable` releases
+    /// (and cancels) the old one. This enforces "last subscriber wins" on
+    /// the Combine route, matching the mutual-exclusivity invariant the SPI
+    /// hook properties already promise.
+    var navigationSubscription: AnyCancellable?
+
     /// Clock used to auto-dismiss toasts emitted via
     /// ``InputFromController/toastSubject``.
     ///

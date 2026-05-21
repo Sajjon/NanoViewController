@@ -6,8 +6,10 @@ import NanoViewControllerCore
 import NanoViewControllerNavigation
 
 extension Coordinating {
-    /// Subscribes the coordinator to the controller's navigation publisher and
-    /// stores the resulting cancellable on the coordinator's bag.
+    /// Subscribes to the controller's navigation publisher and stashes the
+    /// cancellable on the scene itself, so re-subscribing through the inverse
+    /// helper (see ``subscribeToModalNavigation(of:handler:)``) cancels this
+    /// subscription instead of letting both sinks fire on every emission.
     ///
     /// Used by the push-style hookup in
     /// ``Coordinating/pushSceneInstance(_:animated:navigationPresentationCompletion:navigationHandler:)``.
@@ -27,16 +29,20 @@ extension Coordinating {
     ) {
         scene.navigationHandler = handler
         scene.modalNavigationHandler = nil
-        scene.navigation
+        scene.navigationSubscription = scene.navigation
             .sinkOnMain { handler($0) }
-            .store(in: &cancellables)
     }
 
-    /// Subscribes the coordinator to the controller's navigation publisher and
-    /// hands the caller's handler a `DismissScene` callback that dismisses
-    /// the controller with optional animation. Used by the modal-style hookups in
+    /// Subscribes to the controller's navigation publisher and hands the
+    /// caller's handler a `DismissScene` callback that dismisses the
+    /// controller with optional animation. Used by the modal-style hookups in
     /// ``Coordinating/modallyPresent(scene:animated:presentationCompletion:navigationHandler:)``
     /// and ``Coordinating/replaceAllScenes(with:animated:whenReplacingFinished:navigationHandler:)``.
+    ///
+    /// Like the push-style variant, the cancellable lives on the scene so
+    /// that re-subscribing through ``subscribeToNavigation(of:handler:)``
+    /// cancels this subscription rather than leaving two live sinks routing
+    /// every emission to both handlers.
     ///
     /// Side effect: stashes `handler` on
     /// ``NanoViewController/modalNavigationHandler`` (an `@_spi(Testing)` hook).
@@ -52,12 +58,11 @@ extension Coordinating {
     ) {
         scene.modalNavigationHandler = handler
         scene.navigationHandler = nil
-        scene.navigation
+        scene.navigationSubscription = scene.navigation
             .sinkOnMain { [weak scene] step in
                 handler(step) { animated, completion in
                     scene?.dismiss(animated: animated, completion: completion)
                 }
             }
-            .store(in: &cancellables)
     }
 }
