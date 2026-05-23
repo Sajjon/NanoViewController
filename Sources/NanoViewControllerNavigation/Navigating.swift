@@ -1,4 +1,4 @@
-// MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
+// MIT License — Copyright (c) 2018-2026 Alexander Cyon - https://github.com/sajjon
 
 /// Type capable of navigating — declares which navigation steps it can emit.
 ///
