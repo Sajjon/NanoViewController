@@ -1,4 +1,4 @@
-// MIT License — Copyright (c) 2018-2026 Alexander Cyon (github.com/sajjon)
+// MIT License — Copyright (c) 2018-2026 Alexander Cyon - https://github.com/sajjon
 
 import Combine
 @_spi(Testing) @testable import NanoViewControllerController
@@ -99,6 +99,74 @@ final class NavigationHandlerSPITests: XCTestCase {
             1,
             "modalNavigationHandler should forward the caller's DismissScene to the routing closure"
         )
+    }
+
+    // MARK: - Mutual exclusivity of the two SPI hooks
+
+    func test_resubscribingModalAfterPush_clearsThePushHandler() throws {
+        // Arrange — wire up a scene through the push helper first, capturing
+        // both push and modal handler invocations so we can assert that only
+        // the most-recent subscription receives emissions.
+        let coordinator = TestCoordinator(navigationController: UINavigationController())
+        let viewModel = SPITestViewModel()
+        var pushRouted = [SPITestStep]()
+        var modalRouted = [SPITestStep]()
+
+        coordinator.push(scene: SPITestScene.self, viewModel: viewModel, animated: false) {
+            pushRouted.append($0)
+        }
+        let scene = try XCTUnwrap(coordinator.navigationController.viewControllers.last as? SPITestScene)
+        XCTAssertNotNil(scene.navigationHandler)
+        XCTAssertNil(scene.modalNavigationHandler)
+
+        // Act — re-subscribe the same instance through the modal helper.
+        coordinator.subscribeToModalNavigation(of: scene) { step, _ in
+            modalRouted.append(step)
+        }
+
+        // Assert — SPI hook properties flipped.
+        XCTAssertNotNil(scene.modalNavigationHandler)
+        XCTAssertNil(scene.navigationHandler)
+
+        // Assert — Combine route also flipped. Emitting through the VM should
+        // hit only the latest subscription, not both. (Without cancelling the
+        // prior sink, this would land in `pushRouted` as well.)
+        viewModel.trigger.send(.alpha)
+        pumpMainRunLoop()
+        XCTAssertEqual(pushRouted, [], "previous push subscription must be cancelled on re-subscribe")
+        XCTAssertEqual(modalRouted, [.alpha])
+    }
+
+    func test_resubscribingPushAfterModal_clearsTheModalHandler() throws {
+        // Arrange — wire up via modal first.
+        let nav = ModalPresentCapturingNavigationController()
+        let coordinator = TestCoordinator(navigationController: nav)
+        let viewModel = SPITestViewModel()
+        var modalRouted = [SPITestStep]()
+        var pushRouted = [SPITestStep]()
+
+        coordinator.modallyPresent(scene: SPITestScene.self, viewModel: viewModel, animated: false) { step, _ in
+            modalRouted.append(step)
+        }
+        let presented = try XCTUnwrap(nav.presentedViewControllerCapture as? UINavigationController)
+        let scene = try XCTUnwrap(presented.viewControllers.first as? SPITestScene)
+        XCTAssertNotNil(scene.modalNavigationHandler)
+        XCTAssertNil(scene.navigationHandler)
+
+        // Act — re-subscribe the same instance through the push helper.
+        coordinator.subscribeToNavigation(of: scene) {
+            pushRouted.append($0)
+        }
+
+        // Assert — SPI hook properties flipped.
+        XCTAssertNotNil(scene.navigationHandler)
+        XCTAssertNil(scene.modalNavigationHandler)
+
+        // Assert — Combine route also flipped.
+        viewModel.trigger.send(.alpha)
+        pumpMainRunLoop()
+        XCTAssertEqual(modalRouted, [], "previous modal subscription must be cancelled on re-subscribe")
+        XCTAssertEqual(pushRouted, [.alpha])
     }
 
     func test_modalNavigationHandler_dismissForwardsAnimatedFlagAndCompletion() {
